@@ -58,7 +58,7 @@ pre{background:#eef2f7;border:1px solid var(--border);border-left:4px solid var(
 </head>
 <body>
 <div class="layout">
-  <nav class="sidebar" id="sidebar" aria-label="보고서 목차">
+  <nav class="sidebar" id="sidebar" aria-label="사용설명서 목차">
     <div class="brand">
       <span class="tag">XP-Builder 프로젝트 소스 관리</span>
       <div class="name">XPD SOURCE · USER GUIDE</div>
@@ -77,298 +77,39 @@ pre{background:#eef2f7;border:1px solid var(--border);border-left:4px solid var(
     <div class="print-mode-bar" id="printModeBar"><span>인쇄용 화면입니다. 인쇄창이 열리지 않으면 <b>Ctrl+P</b>를 누르세요.</span><button onclick="invokeNativePrint()">인쇄창 다시 열기</button><button onclick="saveCurrentFile()">현재 파일 저장</button><button onclick="exitPrintPreview()">원래 화면으로</button></div>
 
     <header class="cover" id="cover">
-      <div class="eyebrow" data-editable>XPD SOURCE · USER GUIDE</div>
-      <h1 data-editable>XPD Source 사용설명서</h1>
-      <div class="subtitle" data-editable>텍스트 소스 편집 · Git 변경 관리 · XPD 재생성</div>
-      <div class="meta" data-editable><div><b>버전</b> 0.3.1 · 소스 형식 v3</div><div><b>기준일</b> 2026-10-03</div><div><b>실행 환경</b> Python 3.9 이상 · PowerShell</div></div>
+<h1 data-editable>XPD Source 사용설명서</h1>
+<div class="subtitle" data-editable>XPD → 소스 만들기 · 소스 수정 후 → XPD 만들기</div>
 </header>
 
     <div class="container">
-      <section class="summary-panel" id="summary" data-index-title="핵심 사용 흐름">
-        <h2 data-editable>여러 파일을 수정해도 XPD 생성은 한 번에</h2>
-        <p class="summary-lead" data-editable>scripts의 기존 본문과 screens의 표시 문구를 편집한 뒤 check → build를 실행하세요. 미해석 데이터까지 포함한 전체 소스 폴더를 함께 관리합니다.</p>
-        <div class="summary-grid">
-          <div class="summary-card" data-editable><b>23개 스크립트</b><span>UTF-8 txt 본문 편집 · 스크립트 이름 사용</span></div>
-          <div class="summary-card" data-editable><b>21개 화면</b><span>화면별 JSON · 기존 표시 문구 편집</span></div>
-          <div class="summary-card" data-editable><b>지원 범위 확인</b><span>좌표·색상·객체 추가/삭제는 미지원</span></div>
-        </div>
-      </section>
+<section class="block" id="s1">
+<h2 class="sec-title" data-editable>01. XPD → 소스 만들기</h2>
+<div data-editable>
+<p>PowerShell에서 작업 폴더로 이동합니다.</p>
+<pre><code>Set-Location 'D:/Program/AppCodex/ETC/xpd-source/GitFolder'</code></pre>
+<h3 class="sub-title">기존 sample-source를 XPD 내용으로 갱신</h3>
+<pre><code>python ./xpd.py sync "D:/경로/프로젝트.xpd" ./sample-source</code></pre>
+<p><code>D:/경로/프로젝트.xpd</code>를 소스로 분리할 실제 XPD 경로로 바꾸세요.</p>
+<p>기존 소스는 <code>sample-source/build/sync-backups/</code>에 백업한 뒤 선택한 XPD 내용으로 교체합니다. 아직 XPD로 만들지 않은 TXT 수정사항이 있다면 먼저 아래의 build를 실행하세요.</p>
+<h3 class="sub-title">처음 추출하여 새 폴더를 만들 때</h3>
+<pre><code>python ./xpd.py extract "D:/경로/프로젝트.xpd" ./sample-source</code></pre>
+<p><code>extract</code>는 대상 폴더가 없을 때만 사용합니다. 이미 <code>sample-source</code>가 있으면 위의 <code>sync</code>를 사용하세요.</p>
+</div>
+</section>
+<section class="block" id="s2">
+<h2 class="sec-title" data-editable>02. 소스 수정 후 → XPD 만들기</h2>
+<div data-editable>
+<p><code>sample-source/scripts/*.txt</code>의 스크립트 본문 또는 <code>sample-source/screens/*.json</code>의 기존 표시 문구를 수정하고 저장합니다. 파일명과 JSON 키는 유지하세요.</p>
+<p>같은 작업 폴더에서 검사 후 XPD를 생성합니다.</p>
+<pre><code>Set-Location 'D:/Program/AppCodex/ETC/xpd-source/GitFolder'
 
-<section class="block" id="s1"><h2 class="sec-title" data-editable>01. 시작하기</h2><div data-editable><p>Python 3.9 이상, 외부 패키지 없이 실행합니다. 로컬에서만 동작합니다.</p>
-<p><strong>현재 버전은 기존 스크립트 본문과 화면별 문자열 편집을 지원하는 실험 버전입니다.</strong>
-화면 전체 속성을 JSON으로 해석하는 범용 변환기는 아닙니다.
-좌표/색상/통신/이벤트 등 아직 해석되지 않은 정보는 읽기 전용 16진수로 보존합니다.
-원본 XPD 없이 이 소스 폴더 전체만으로 XPD를 재조립할 수 있습니다.
-16진수 보존은 의미를 이해하고 편집할 수 있는 소스화와 다릅니다.</p></div></section>
-<section class="block" id="s2"><h2 class="sec-title" data-editable>02. 지금 사용할 프로젝트</h2><div data-editable><p><code>sample-source/</code>에 제공받은 ECU_HMI_sol_260928_V1.042.xpd를 분리했습니다.
-원본 스크립트 내용 그대로이며 검증용 주석을 넣지 않았습니다.</p>
-<ul>
-<li><code>scripts/</code>: 이름/ID가 확인된 스크립트 23개. UTF-8 텍스트로 수정합니다.</li>
-<li><code>SCRIPTS.md</code>: ID와 스크립트 이름 대응표.</li>
-<li><code>screens/</code>: 화면 21개(기본 9개, 팝업 12개), 문자열 4,744개를 화면별 JSON으로 분리.</li>
-<li><code>texts/</code>: 나머지 문자열 후보 544개. 검토/검색용 JSON 6개.</li>
-<li><code>preserved/opaque.hex</code>: 미해석 데이터 2,074,640바이트의 보존본. 수정 금지.</li>
-<li><code>project.json</code>: 조립 순서와 체크섬. 수정 금지.</li>
-<li><code>build/</code>: 빌드 결과. Git에서 제외합니다.</li>
-</ul></div></section>
-<section class="block" id="s3"><div class="highlight-box" data-editable><b>화면 제목과 JSON 파일 대응</b><p>Main → screens/main.json · Login → screens/login.json · LoadcellTest → screens/loadcelltest.json</p><p>제목은 소문자, 공백은 밑줄로 변환합니다. 중복·미확인·파일명 부적합 제목은 내부 ID를 사용합니다. 전체 대응표는 sample-source/SCREENS.md에 있습니다. 파일명을 직접 변경하지 마세요.</p></div><h2 class="sec-title" data-editable>03. 폴더와 주요 파일</h2><div data-editable><p>평소에는 sample-source/scripts와 sample-source/screens를 편집합니다. XPD 재생성에는 sample-source 폴더 전체가 필요합니다.</p>
-<div class="table-scroll"><table class="dtable">
-<thead>
-<tr>
-<th>위치</th>
-<th>용도</th>
-<th>수정 여부</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>sample-source/</td>
-<td>실제 프로젝트의 전체 추출 소스</td>
-<td>아래 항목 참고</td>
-</tr>
-<tr>
-<td>sample-source/scripts/</td>
-<td>스크립트 23개. 파일명·내부 ID는 SCRIPTS.md 참고</td>
-<td>기존 본문 편집</td>
-</tr>
-<tr>
-<td>sample-source/screens/</td>
-<td>화면 21개의 문자열 JSON</td>
-<td>의미가 확인된 표시 문구 편집</td>
-</tr>
-<tr>
-<td>sample-source/texts/</td>
-<td>내부 이름 등을 포함한 기타 문자열 후보</td>
-<td>기본 수정 차단</td>
-</tr>
-<tr>
-<td>sample-source/preserved/</td>
-<td>미해석 바이너리 보존 데이터</td>
-<td>수정 금지</td>
-</tr>
-<tr>
-<td>sample-source/build/</td>
-<td>생성 XPD와 변경 보고서</td>
-<td>Git 제외, 결과 확인용</td>
-</tr>
-<tr>
-<td>tests/</td>
-<td>변환기 자동 테스트</td>
-<td>변환기 개발용</td>
-</tr>
-<tr>
-<td>validation/</td>
-<td>이전 버전·테스트 사본·앱 저장본·Git 복원 검증 자료</td>
-<td>일반 편집에 사용하지 않음</td>
-</tr>
-<tr>
-<td><strong>pycache</strong>/</td>
-<td>Python 실행 캐시</td>
-<td>관리 불필요</td>
-</tr>
-<tr>
-<td>.git/</td>
-<td>숨김 폴더, 로컬 Git 변경 이력</td>
-<td>직접 수정 금지</td>
-</tr>
-<tr>
-<td>sample-source/project.json</td>
-<td>소스 경로·조립 순서·검증 정보</td>
-<td>수정 금지</td>
-</tr>
-<tr>
-<td>sample-source/SCRIPTS.md</td>
-<td>파일 번호와 스크립트 이름 대응표</td>
-<td>찾아보기 용도</td>
-</tr>
-</tbody>
-</table></div>
-<p>validation 안의 edited-source 계열은 수정 실험본, legacy-source 계열은 이전 형식 보관본,
-resaved-source 계열은 XP-Builder 저장본의 재추출 자료입니다.
-git-restored와 final-git-restored는 Git 복원 시험용이며 실제 작업 소스는 sample-source입니다.</p></div></section>
-<section class="block" id="s4"><h2 class="sec-title" data-editable>04. XPD생성방법</h2><div data-editable><p>PowerShell에서:</p>
-<pre><code class="language-powershell">Set-Location 'D:\Program\AppCodex\ETC\xpd-source'
-
-# 1. sample-source/scripts/*.txt 또는 screens/*.json의 기존 문구를 수정
-# 2. 수정한 소스와 재구성 가능 여부 검사
-python .\xpd.py check .\sample-source
-
-# 3. 여러 파일의 변경을 한 번에 XPD로 반영
-python .\xpd.py build .\sample-source .\sample-source\build\edited-v1.xpd
-
-# 4. Git에서 텍스트 변경 검토
-git diff -- sample-source/scripts sample-source/screens
-</code></pre>
-<p>예를 들어 <code>sample-source/screens/loadcelltest.json</code>의 <code>t000012</code> 값은
-<code>텐션미터 보정</code>입니다. JSON 키를 유지하고 값만 수정하면 B-8 화면에 반영됩니다.
-ON/OFF 상태별로 문구가 중복 저장된 경우에는 해당하는 값을 모두 수정해야 합니다.
-폰트명과 내부 문자열도 포함되므로 표시 문구로 의미가 확인되는 값만 바꾸세요.
-<code>t000000</code> 화면 식별 이름은 읽기 전용입니다. 키 추가/삭제는 지원하지 않습니다.</p>
-<p>기존 결과를 덮어쓰지 않습니다. 다음 빌드 때는 <code>edited-v2.xpd</code>처럼 다른 이름을 사용하세요.
-생성된 <code>.xpd.report.json</code>에는 변경 스크립트·화면 문자열과 결과 SHA-256이 기록됩니다.
-<code>xp_builder_validated: false</code>는 CLI가 앱 검사까지 수행하지 않았다는 뜻입니다.
-코드의 빌드 성공은 실제 패널 동작 검증과 다릅니다.</p>
-<p>빌드 후에는 XP-Builder에서 파일 열기, 스크립트 검사, 저장/재열기와 시뮬레이션으로
-변경한 동작을 확인하세요. 이 도구는 패널 전송을 하지 않습니다.</p></div></section>
-<section class="block" id="s5"><h2 class="sec-title" data-editable>05. txt와 c 확장자</h2><div data-editable><p>현재 스크립트는 UTF-8 텍스트인 <code>scripts/bit_shifter.txt</code> 형식입니다. Git과 AI는 txt 확장자에서도 코드와 변경사항을 읽을 수 있습니다.</p>
-<p><code>.c</code>는 편집기의 C 구문 강조에 편리하지만 XP-Builder 스크립트에는 <code>@[W:...]</code> 같은 전용 문법이 있어 일반 C 분석기에서 오류로 표시될 수 있습니다. 일반 C 컴파일러로 XPD를 만드는 방식은 아닙니다.</p>
-<p><strong>현재 버전에서 파일 이름만 .c로 변경하면 빌드가 실패합니다.</strong> project.json이 기존 txt 경로를 참조하기 때문입니다. c 확장자 도입에는 변환기의 추출 경로, 프로젝트 메타데이터와 검증 정보, Git 줄바꿈 설정을 함께 변경해야 합니다. 이 설명서에서는 기존 txt 형식을 유지합니다.</p>
-<p>편집기에서 파일 이름을 유지하고 언어 모드만 C로 선택하는 방법도 있습니다. 전용 문법에 대한 진단은 구분해서 보세요.</p></div></section>
-<section class="block" id="s6"><h2 class="sec-title" data-editable>06. XPD에서 소스 갱신</h2><div data-editable><p>작업 폴더는 <code>sample-source</code> 하나로 유지합니다. <strong>소스 → XPD는 build, XPD → 소스는 sync</strong>입니다.</p>
-<pre><code class="language-powershell">Set-Location 'D:\Program\AppCodex\ETC\xpd-source'
-
-# 소스를 수정한 뒤 XPD 생성
-python .\xpd.py build .\sample-source .\sample-source\build\edited-v3.xpd
-
-# XP-Builder에서 XPD를 편집·저장한 뒤 같은 소스 폴더에 반영
-python .\xpd.py sync .\sample-source\build\edited-v3.xpd .\sample-source
-
-# 변경사항 검토 후 소스 전체 기록
-python .\xpd.py check .\sample-source
-git diff -- sample-source
-git add sample-source
-git commit -m &quot;Sync HMI sources from XPD&quot;
-</code></pre>
-<p><code>sync</code>는 임시 폴더에서 먼저 추출·무손실 재조립을 검사하고, 현재 소스를
-<code>sample-source/build/sync-backups/날짜-고유번호/</code>에 백업한 다음 갱신합니다.
-스크립트·화면 문자열·조립 메타데이터·보존 데이터가 함께 갱신됩니다.
-기존 build 결과, .git, 별도 메모 파일은 유지합니다. 처리 중 파일 쓰기 오류가 나면 이전 소스로 복구합니다.
-전원 종료 같은 강제 중단은 자동 복구를 보장하지 않으므로 해당 백업을 사용하세요.</p>
-<p><strong>자동 병합이 아닌 XPD 기준 교체입니다.</strong> TXT 수정 직후에는 build를 사용하세요.
-오래된 XPD를 sync하면 현재 TXT의 변경사항은 이전 소스 백업에만 남습니다.
-동시에 양쪽을 수정했다면 <code>python .\xpd.py diff 입력.xpd .\sample-source</code>로 먼저 비교하세요.
-이 비교는 스크립트와 화면 문자열 범위이며 전체 속성 비교는 아닙니다.</p>
-<p>같은 폴더에 계속 반영할 때는 sync를 사용하며, extract는 처음 추출하거나 별도 검토용 폴더가 필요할 때 사용합니다.</p>
-<pre><code class="language-powershell"># 최초 추출: 대상 폴더가 없어야 함
-python .\xpd.py extract 'D:\경로\프로젝트.xpd' .\sample-source
-</code></pre>
-<p>다른 버전/다른 종류의 XPD는 호환성을 보장하지 않습니다.</p></div></section>
-<section class="block" id="s7"><h2 class="sec-title" data-editable>07. 지속적인 Git 관리</h2><div data-editable><p><code>sample-source/</code> 전체를 추적해야 합니다. <code>scripts/</code>만으로는 빌드할 수 없습니다.
-텍스트 소스를 기준으로 계속 수정하고 빌드하세요. 매 빌드마다 재추출할 필요가 없습니다.
-스크립트 파일 이름은 스크립트 이름을 사용합니다(예: bit_shifter.txt). 내부 번호는 project.json에 보존됩니다. 중복 이름은 ID 접미사로 구분하고 파일명 금지 문자는 치환합니다.
-Git이 스크립트 줄바꿈을 자동 변경하지 않도록 <code>.gitattributes</code>를 제공합니다.</p>
-<pre><code class="language-powershell">git status
-git diff -- sample-source
-git add sample-source
-git commit -m &quot;Update HMI script behavior&quot;
-</code></pre>
-<p>XP-Builder에서 직접 편집했다면 저장한 XPD를 <code>sync</code>로 같은 sample-source에 반영하고 Git 차이를 검토하세요. 화면 편집과 텍스트 편집의 자동 병합은 구현하지 않았습니다.
-문자열 후보의 순번은 재추출 시 구조 변경에 따라 달라질 수 있습니다.</p>
-<p>스크립트와 화면 문자열을 텍스트 단위로 비교하려면:</p>
-<pre><code class="language-powershell">python .\xpd.py diff 'D:\경로\이전.xpd' .\sample-source
-</code></pre></div></section>
-<section class="block" id="s8"><h2 class="sec-title" data-editable>08. 지원 범위</h2><div data-editable><div class="table-scroll"><table class="dtable">
-<thead>
-<tr>
-<th>항목</th>
-<th>상태</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>수정 없는 XPD 왕복</td>
-<td>원본 SHA-256/바이트 일치 검사</td>
-</tr>
-<tr>
-<td>기존 스크립트 본문 일괄 편집</td>
-<td>지원. UTF-16 길이 필드를 재계산</td>
-</tr>
-<tr>
-<td>기존 화면 표시 문구 편집</td>
-<td>지원. 화면 구간과 상위 구간의 길이도 재계산</td>
-</tr>
-<tr>
-<td>한글/긴 본문/빈 본문</td>
-<td>코덱·왕복 자동 테스트 포함</td>
-</tr>
-<tr>
-<td>원본 XPD 없이 재빌드</td>
-<td>가능. 전체 소스 폴더 필요</td>
-</tr>
-<tr>
-<td>변경된 파일 누락·미등록 파일·보존 데이터 훼손</td>
-<td>빌드 중단</td>
-</tr>
-<tr>
-<td>screens 외 일반 문자열 후보 수정</td>
-<td>기본 차단. 실험 옵션만 제공</td>
-</tr>
-<tr>
-<td>스크립트 추가·삭제·이름/번호 변경</td>
-<td>미지원</td>
-</tr>
-<tr>
-<td>화면/객체 추가·삭제, 좌표·색상·통신 설정 편집</td>
-<td>미지원</td>
-</tr>
-<tr>
-<td>장치 주소 전체의 의미 기반 추출</td>
-<td>미지원. 스크립트 본문 안 주소는 텍스트 편집 가능</td>
-</tr>
-<tr>
-<td>XPD 신규 프로젝트 생성</td>
-<td>미지원. 기존 프로젝트 추출본이 필요</td>
-</tr>
-</tbody>
-</table></div>
-<p><code>--allow-unverified-text</code>는 문자열 후보 변경 실험에만 사용합니다. 문자열 후보는
-프레임 패턴으로 찾은 값이라 화면 문구/내부 키/다른 데이터의 구별이 없습니다.
-정상 사용에서는 <code>scripts/</code>의 본문과 <code>screens/</code>의 의미가 확인되는 표시 문구만 수정하세요.
-화면 문자열도 패턴 기반으로 찾은 필드라 폰트/내부 이름이 섞여 있습니다.
-모든 후보가 실제 문자열이라는 보장이나, 임의의 문자열 변경이 안전하다는 보장은 없습니다.</p>
-<p>현재 형식은 <code>xpd-source/v3</code>입니다. 0.1.0의 v2 소스 폴더는 이 버전에서 직접
-빌드할 수 없습니다. v2용 코드로 XPD를 만든 뒤 0.2.0으로 새 폴더에 추출하세요.
-제공된 sample-source는 v3로 준비했습니다.</p></div></section>
-<section class="block" id="s9"><h2 class="sec-title" data-editable>09. 검사와 개발</h2><div data-editable><pre><code class="language-powershell">python -m unittest discover -s tests -v
-</code></pre>
-<p><code>VALIDATION.md</code>에 실제 샘플 검증 결과와 남은 한계를 기록합니다.
-<code>FORMAT_NOTES.md</code>는 관찰한 형식 정보이며 LS의 공식 사양이 아닙니다.</p></div></section>
-<section class="block" id="s10"><h2 class="sec-title" data-editable>10. 오류 해결과 검증 결과</h2><div data-editable><div class="table-scroll"><table class="dtable">
-<thead>
-<tr>
-<th>표시 또는 상황</th>
-<th>의미와 조치</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Output or report already exists</td>
-<td>출력 XPD 또는 보고서가 존재합니다. edited-v2.xpd처럼 새 이름을 사용합니다.</td>
-</tr>
-<tr>
-<td>Unsupported workspace format</td>
-<td>소스 형식이 맞지 않습니다. v2는 구버전 코드로 XPD를 만든 뒤 v3로 재추출합니다.</td>
-</tr>
-<tr>
-<td>Unregistered source file</td>
-<td>scripts/texts/screens 안에 등록되지 않은 파일이 있습니다. 임의 추가·이름 변경은 지원하지 않습니다.</td>
-</tr>
-<tr>
-<td>project.json was modified</td>
-<td>조립 정보가 변경되었습니다. Git의 정상 버전에서 복원하고 의도한 본문 변경만 다시 적용합니다.</td>
-</tr>
-<tr>
-<td>Preserved bytes changed</td>
-<td>opaque.hex가 변경되었습니다. 정상 보존본으로 복원해야 합니다.</td>
-</tr>
-<tr>
-<td>Unverified text edited</td>
-<td>texts의 후보 문자열이 변경되었습니다. 정상 작업에서는 기존 값으로 되돌립니다.</td>
-</tr>
-<tr>
-<td>xp_builder_validated: false</td>
-<td>CLI는 앱 검사를 실행하지 않습니다. 재조립 실패를 뜻하지는 않습니다.</td>
-</tr>
-</tbody>
-</table></div>
-<p>2026-10-03 기준 자동 테스트 19개가 통과했습니다. Git에서 복원한 코드·소스만으로 원본과 동일한 XPD를 생성했습니다.
-실제 샘플에서는 스크립트 23개에 주석을 추가하고 화면 3개의 문구 5곳을 수정한 뒤 XP-Builder 3.70에서 열기·표시·다른 이름 저장을 확인했습니다.
-검사는 오류 0개·경고 37개로 원본과 개수가 같았습니다. 경고 전체 내용의 일대일 비교, 시뮬레이터 및 실제 패널 동작은 검증하지 않았습니다.</p></div></section>
-<section class="block" id="s11"><h2 class="sec-title" data-editable>11. 이 HTML 설명서 편집·저장</h2><div data-editable><p>상단의 <strong>수정 모드 켜기</strong>를 누르면 표지·요약·본문·표를 직접 고칠 수 있습니다. 이 기능은 설명서 내용만 바꾸며, scripts나 XPD 파일은 수정하지 않습니다.</p>
-<p><strong>현재 파일 저장</strong>을 처음 누르면 현재 열어 둔 <code>XPD_Source_사용설명서.html</code> 자체를 선택하고 쓰기 권한을 승인하세요. 이후 같은 화면에서는 해당 파일에 저장합니다. 브라우저 재실행 후에는 저장된 권한 상태에 따라 재선택 또는 승인이 필요할 수 있습니다. 이름이 같은 다른 폴더의 파일과 혼동하지 않도록 경로를 확인하세요.</p>
-<p>Chrome 또는 Edge에서 로컬 HTML을 여는 방식을 기본으로 합니다. 파일 쓰기 API를 지원하지 않는 미리보기에서는 브라우저 사용 안내가 표시됩니다. 다른 이름 저장이나 다운로드 대체 기능은 제공하지 않습니다.</p>
-<p><strong>인쇄 / PDF 저장</strong>은 브라우저 인쇄 기능을 엽니다. 인쇄창이 제한되면 인쇄용 화면에서 Ctrl+P를 사용하세요. 목차·버튼은 인쇄에서 제외합니다. 모바일에서는 상단 <strong>목차</strong> 버튼으로 장 목록을 엽니다.</p></div></section>
-      <footer class="doc-footer" data-editable>XPD Source 사용설명서</footer>
+python ./xpd.py check ./sample-source
+python ./xpd.py build ./sample-source ./sample-source/build/edited-v1.xpd</code></pre>
+<p>생성 파일: <code>GitFolder/sample-source/build/edited-v1.xpd</code></p>
+<p>같은 이름의 출력 파일이 있으면 <code>edited-v2.xpd</code>처럼 새 이름을 지정하세요. 생성된 XPD는 XP-Builder에서 열어 데이터 검사와 변경한 동작을 확인합니다.</p>
+</div>
+</section>
+<footer class="doc-footer" data-editable>XPD Source 사용설명서</footer>
     </div>
   </main>
 </div>
@@ -386,7 +127,7 @@ git commit -m &quot;Update HMI script behavior&quot;
   function buildIndex(){
     const nav=document.getElementById('navlist');
     nav.innerHTML='';
-    const targets=[document.getElementById('cover'),document.getElementById('summary'),...document.querySelectorAll('section.block')].filter(Boolean);
+    const targets=[...document.querySelectorAll('section.block')];
     targets.forEach((target,index)=>{
       const title=target.dataset.indexTitle || target.querySelector('h1,h2')?.textContent.trim() || `항목 ${index+1}`;
       const li=document.createElement('li');
@@ -494,7 +235,7 @@ git commit -m &quot;Update HMI script behavior&quot;
   }
 
   function updateScrollSpy(){
-    const targets=[document.getElementById('cover'),document.getElementById('summary'),...document.querySelectorAll('section.block')].filter(Boolean);
+    const targets=[...document.querySelectorAll('section.block')];
     if(navLockId&&Date.now()<navLockUntil){
       document.querySelectorAll('#navlist a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+navLockId));
       return;
