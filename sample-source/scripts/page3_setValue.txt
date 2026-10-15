@@ -1,0 +1,555 @@
+//---------------------------- 
+//	page 3 data tx and rx
+//
+//	rx data
+//	- 운용 고도
+//	- 가/감속 구간 1
+//	- 가/감속 구간 2
+//
+//	tx data
+//	- page number
+//	- new 운용 고도
+//	- new 가/감속 구간 1
+//	- new 가/감속 구간 2
+//	- reset 
+//
+//---------------------------- 
+
+// rx buffer
+char global_Response[28];
+// ecu data buffer
+char global_buffer[17];
+
+// received data size
+int global_ReadSize;
+
+// ecu data buffer counter
+int global_buffercnt=0;
+// to get display data only from whole rx data
+int global_rcv_cnt=0;
+// ecu data address
+char global_addr=0;
+
+// tx data buffer
+char data2send[28];
+// tx data size
+int size232=0;
+
+//---------------------------- 
+// 	const data
+//---------------------------- 
+
+// cmd
+data2send[0] = 0x65;
+// id
+data2send[1] = 0x30;
+data2send[2] = 0x63;
+
+data2send[3] = 0x31;
+data2send[4] = 0x32;
+
+data2send[5] = 0x33;
+data2send[6] = 0x34;
+
+data2send[7] = 0x31;
+data2send[8] = 0x30;
+// dlc
+data2send[9] = 0x38;
+
+// page number
+data2send[10] = 0x32; 
+
+// empty space
+// byte2
+data2send[12] = 0x30;
+data2send[13] = 0x30;
+// byte3
+data2send[14] = 0x30;
+data2send[15] = 0x30;
+// byte4
+data2send[16] = 0x30;
+data2send[17] = 0x30;
+// byte5
+data2send[18] = 0x30;
+data2send[19] = 0x30;
+// byte6
+data2send[20] = 0x30;
+data2send[21] = 0x30;
+// byte7
+data2send[22] = 0x30;
+data2send[23] = 0x30;
+// byte8
+data2send[24] = 0x30;
+data2send[25] = 0x30;
+
+// end byte <cr>
+data2send[26] = 0x0d;
+//---------------------------- 
+
+//-----------------------
+//	+,- button pressed
+//-----------------------
+
+// + 1 pressed - button 1
+if(@[X:HW31100.0] == 1){
+	// if value more than 329
+	if(@[W:HW31115] > 329) {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	} else {
+		// add 1 to value
+		@[W:HW31115] += 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW31100.5] = 1;
+	// reset button
+	@[X:HW31100.0] = 0;
+} 
+// - 1 pressed - button 1
+else if(@[X:HW31100.1] == 1){
+	// if value less than 301
+	if(@[W:HW31115] < 301){
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	else {
+		// decrease value by 1
+		@[W:HW31115] -= 1;	
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW31100.5] = 1;
+	// reset button
+	@[X:HW31100.1] = 0;
+}
+// + 1 pressed - button 2
+else if(@[X:HW32100.0] == 1){
+	// if value less than 300
+	if(@[W:HW31125] < 290) {
+		// add 1 to value
+		@[W:HW31125] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW32100.5] = 1;
+	// reset button
+	@[X:HW32100.0] = 0;
+} 
+// - 1 pressed - button 2
+else if(@[X:HW32100.1] == 1){
+	// if value less than 291
+	if(@[W:HW31125] < 271){
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	} else {
+		// decrease value by 1
+		@[W:HW31125] -= 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW32100.5] = 1;
+	// reset button
+	@[X:HW32100.1] = 0;
+}
+// + 1 pressed - button 3
+else if(@[X:HW33100.0] == 1){
+	// if value less than 10
+	if(@[W:HW31135] < 30) {
+		// add 1 to value
+		@[W:HW31135] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+		// max value fixed to 10
+		@[W:HW31135] = 30;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW33100.5] = 1;
+	// reset button
+	@[X:HW33100.0] = 0;
+} 
+// - 1 pressed - button 3
+else if(@[X:HW33100.1] == 1){
+	// if value less than 1
+	if(@[W:HW31135] < 11){
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+		// fix min value to 
+		@[W:HW31135] = 10;
+	} else {
+		// decrease value by 1
+		@[W:HW31135] -= 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW33100.5] = 1;
+	// reset button
+	@[X:HW33100.1] = 0;
+}
+//---------------------------- 
+
+//---------------------------- 
+//	save button pressed
+//
+//	if data is more than 1 byte
+//	seperate the value to high byte and low byte
+//	and send it to ecu
+//	
+//---------------------------- 
+
+//---------------------------- 
+//	variables
+//---------------------------- 
+int highByte=0;
+int lowByte=0;
+int fullByte = 0;
+char alphabet[4];
+//---------------------------- 
+
+//---------------------------- 
+// receive mode
+//---------------------------- 
+// when receive ready
+if(@[W:HW32345] == 1){
+	// receive function
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// if receive data is not whole data, receive again
+	if(global_ReadSize < 27 && global_ReadSize > 0) {	
+		global_ReadSize = ReadFromIO(0,&global_Response[global_ReadSize], 27-global_ReadSize );
+	}	
+	
+	// timeout checker - 1sec
+	@[W:HW32344]++;
+	// timeout
+	if(@[W:HW32344] > 8) {
+		// send message
+		@[W:HW32345] = 0;
+		// checker reset
+		@[W:HW32344] = 0;
+			
+		// reset buttons
+		// button 1
+		@[X:HW31100.4] = 0;
+		// button 2
+		@[X:HW32100.4] = 0;
+		// button 3
+		@[X:HW33100.4] = 0;
+		// reset button
+		@[X:HW34100.0] = 0;
+		//zeroing
+		@[X:HW35100.0] = 0;
+	}
+}
+//---------------------------- 
+
+
+
+// button 1 pressed
+if(@[X:HW31100.4] == 1) { 
+	// data address for button 1
+	data2send[11] = 0x31; 
+	// data more than 1 byte
+	// get high & low byte
+	highByte = HIBYTE(@[W:HW31115]);
+	lowByte= LOBYTE(@[W:HW31115]);
+	// transform high byte to 2 ascii data
+	HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+	HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+	
+	// transform low byte to 2 ascii data
+	HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+	HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+	
+	// high byte index
+	data2send[12] = alphabet[0];
+	data2send[13] = alphabet[1];
+	
+	// low byte index
+	data2send[14] = alphabet[2];
+	data2send[15] = alphabet[3];
+} 
+// button 2 pressed
+else if(@[X:HW32100.4] == 1) {
+	// data address for button 2
+	data2send[11] = 0x32; 
+	// data more than 1 byte
+	if(@[W:HW31125] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW31125]);
+		lowByte= LOBYTE(@[W:HW31125]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[12] = alphabet[0];
+		data2send[13] = alphabet[1];
+		
+		// low byte index
+		data2send[14] = alphabet[2];
+		data2send[15] = alphabet[3];
+	} 
+	// data 1 byte only
+	else {
+		fullByte = @[W:HW31125];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[14] = alphabet[0];
+		data2send[15] = alphabet[1];
+	}
+} 
+// button 3 pressed
+else if(@[X:HW33100.4] == 1) {
+	// data address for button 3
+	data2send[11] = 0x33; 
+	// data more than 1 byte
+	if(@[W:HW31135] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW31135]);
+		lowByte= LOBYTE(@[W:HW31135]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[12] = alphabet[0];
+		data2send[13] = alphabet[1];
+		
+		// low byte index
+		data2send[14] = alphabet[2];
+		data2send[15] = alphabet[3];
+	} 
+	// data 1 byte only
+	else {
+		fullByte = @[W:HW31135];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[14] = alphabet[0];
+		data2send[15] = alphabet[1];
+	}
+}
+// reset button pressed
+else if(@[X:HW34100.0] == 1) {
+	// data address for reset button
+	data2send[11] = 0x34; 
+}
+// zeroing button pressed
+else if(@[X:HW35100.0] == 1) {
+	// data address for zeroing button
+	data2send[11] = 0x35; 
+}
+// if nothing pressed - default
+else {
+	@[W:HW32347] = 1;
+	data2send[11] = 0x30; 
+}
+
+//---------------------------- 
+//	resend timer
+//	send requesting page data message
+//	after sending new value
+//---------------------------- 	
+
+// timer start
+if(@[W:HW32345] == 2){
+	// if init timer value and new timer value is not equal
+	if(@[X:HW19812.0] != @[X:HS0000.4]){
+		// timer counter
+		@[W:HW32348]++;
+		// set new timer value 
+		@[X:HW19812.0] = @[X:HS0000.4];
+	}
+	// reset after 150ms
+	if(@[W:HW32348] > 4){
+		// transmit flag
+		@[W:HW32345] = 0;
+		// send default page message
+		@[W:HW32347] = 1;
+		// reset timer counter
+		@[W:HW32348] = 0;
+		// send default page command
+		data2send[11] = 0x30; 
+	}
+}
+//---------------------------- 
+
+//---------------------------- 
+//	transmit mode
+//---------------------------- 
+
+// when transmit ready
+if(@[W:HW32345] == 0){
+	// transmit data
+	size232 = WriteToIO(0,&data2send[0], 27);
+	
+	// if button is pressed
+	if(@[W:HW32347] == 0) {
+		// initialize timer value
+		@[X:HW19812.0] = @[X:HS0000.4];
+		// prevent entering receive mode
+		@[W:HW32345] = 2;
+	} else {
+		// ready to receive
+		@[W:HW32345] = 1;
+		
+		// reset buttons
+		// button 1
+		if(@[X:HW31100.4] == 1){
+			@[X:HW31100.4] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 17 - "save complete"
+			@[W:HW33333] = 17;
+			// change'이전 설정 값' to '현재 설정 값'
+			@[W:HW31110] = @[W:HW31115];
+		}	
+
+			// button 2
+		if(@[X:HW32100.4] == 1){
+			@[X:HW32100.4] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 17 - "save complete"
+			@[W:HW33333] = 17;
+			// change'이전 설정 값' to '현재 설정 값'
+			@[W:HW31120] = @[W:HW31125];
+		}
+		// button 3
+		if(@[X:HW33100.4] == 1){
+			@[X:HW33100.4] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 17 - "save complete"
+			@[W:HW33333] = 17;
+			// change'이전 설정 값' to '현재 설정 값'
+			@[W:HW31130] = @[W:HW31135];
+		}
+		// reset button
+		if(@[X:HW34100.0] == 1){
+			@[X:HW34100.0] = 0;
+			// set '현재 설정 값' to '이전 설정 값'
+			@[X:HW31100.5] = 0;
+			@[X:HW32100.5] = 0;
+			@[X:HW33100.5] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 18 - "reset complete"
+			@[W:HW33333] = 18;
+		}
+		//zeroing
+		if(@[X:HW35100.0] == 1){
+			@[X:HW35100.0] = 0;
+			// set '현재 설정 값' to '이전 설정 값'
+			@[X:HW31100.5] = 0;
+			@[X:HW32100.5] = 0;
+			@[X:HW33100.5] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 19 - "zeroing complete"
+			@[W:HW33333] = 19;
+			// hide button
+			@[X:HW35100.1] = 0;
+		}
+	}
+}
+//---------------------------- 
+
+//---------------------------- 
+//	analyze received data
+//	hmi <-> ecu data length is always 27 bytes
+//---------------------------- 
+
+// when first byte is 0x65, which is sof	
+if(global_Response[0] == 0x65){
+	// when last byte is 0x0d, which is eof
+	if(global_Response[26] == 0x0d){	
+		if(global_Response[7] ==  0x32){
+			// receive complete ready to send
+			@[W:HW32345] = 0;
+			// timeout reset
+			@[W:HW32344] = 0;
+			// connection check reset
+			@[W:HW19811] = 0;
+			
+			// reset button entering flag
+			@[W:HW32347] = 0;
+			
+			// get data only
+			for(global_rcv_cnt = 10; global_rcv_cnt < 26; global_rcv_cnt++){
+				// if alphabet data
+				if( global_Response[global_rcv_cnt] > 0x60){
+					global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x57;
+				}
+				// if numeric data 
+				else {
+					global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x30;
+				}
+			}
+			// received address
+			global_addr = (global_buffer[0] << 4) + global_buffer[1];
+			// altitude page data / page 3
+			////------------------------------ a ------------------------------////
+			if(global_addr == 0x2a) {
+				int temp1 = 0;
+				int temp2 = 0;		
+				
+				// 운용 고도
+				temp1 = (global_buffer[2] << 4) + global_buffer[3];
+				temp2 = (global_buffer[4] << 4) + global_buffer[5];							
+				@[W:HW31110] = (temp1 << 8) + temp2;
+				
+				// 가/감속 구간 1
+				temp1 = (global_buffer[6] << 4) + global_buffer[7];
+				temp2 = (global_buffer[8] << 4) + global_buffer[9];
+				
+				@[W:HW31120] = (temp1 << 8) + temp2;
+				
+				// 가/감속 구간 2
+				temp1 = (global_buffer[10] << 4) + global_buffer[11];
+				temp2 = (global_buffer[12] << 4) + global_buffer[13];	
+				
+				@[W:HW31130] = (temp1 << 8) + temp2;
+				
+				//---------------------------- 
+				//	set '현재 설정 값' to '이전 설정 값'
+				//---------------------------- 
+				
+				if(@[X:HW31100.5] == 0) {
+					@[W:HW31115] = @[W:HW31110];
+				}
+				if(@[X:HW32100.5] == 0) {
+					@[W:HW31125] = @[W:HW31120];
+				}
+				if(@[X:HW33100.5] == 0) {
+					@[W:HW31135] = @[W:HW31130];
+				}
+				//---------------------------- 
+			} 
+		}
+	}
+}
+//---------------------------- 
+
+ERROR:
+{
+
+}

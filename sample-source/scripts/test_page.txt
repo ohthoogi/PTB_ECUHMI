@@ -1,0 +1,568 @@
+//---------------------------- 
+// reset page8 results
+@[W:HW01235] = 0;
+@[W:HW01236] = 0;
+@[W:HW01237] = 0;
+@[W:HW01238] = 0;
+@[W:HW01239] = 0;
+@[W:HW01240] = 0;
+@[W:HW01241] = 0;
+@[W:HW01242] = 0;
+//---------------------------- 
+
+
+//---------------------------- 
+//	page 1 data tx and rx
+//
+//	rx data
+//	- 속도
+//	- 상승력
+//	- 고도
+//	- 브레이크
+//	- 솔 전류 a & b
+//	- 운용 모드
+//	- ecu version
+//
+//	tx data
+//	- page number
+//	- 오토 텐션 on & off
+//	- 고 출력 토크 on & off
+//	- 저장 윈치 프리 휠 구동 모드 - pop up 4
+//
+//---------------------------- 
+
+// rx buffer
+char global_Response[28];
+// ecu data buffer
+char global_buffer[17];
+
+// received data size
+int global_ReadSize;
+
+// ecu data buffer counter
+int global_buffercnt=0;
+// to get display data only from whole rx data
+int global_rcv_cnt=0;
+// ecu data address
+char global_addr=0;
+
+// tx data buffer
+char data2send[28];
+// tx data size
+int size232=0;
+
+//---------------------------- 
+// 	const data
+//---------------------------- 
+
+// cmd
+data2send[0] = 0x65;
+// id
+data2send[1] = 0x30;
+data2send[2] = 0x63;
+
+data2send[3] = 0x31;
+data2send[4] = 0x32;
+
+data2send[5] = 0x33;
+data2send[6] = 0x34;
+
+data2send[7] = 0x31;
+data2send[8] = 0x30;
+// dlc
+data2send[9] = 0x38;
+
+// byte1 // addr
+// page 1
+data2send[10] = 0x38;
+// message 1
+data2send[11] = 0x30;
+
+// byte 2 // joystick output 1
+data2send[12] = 0x30;
+data2send[13] = 0x30;
+// byte 3 // joystick output 2
+data2send[14] = 0x30;
+data2send[15] = 0x30;
+// byte 4 // sol valve type
+data2send[16] = 0x33;
+data2send[17] = 0x30;
+// byte 5 // sol valve 1
+data2send[18] = 0x30;
+data2send[19] = 0x30;
+// byte 6 // sol valve 2
+data2send[20] = 0x30;
+data2send[21] = 0x30;
+// byte7 // normal output 1
+data2send[22] = 0x30;
+data2send[23] = 0x30;
+// byte 8 // normal output 2
+data2send[24] = 0x30;
+data2send[25] = 0x30;
+
+// end byte <cr>
+data2send[26] = 0x0d;
+
+//---------------------------- 
+
+
+
+int temp;
+int highByte;
+int lowByte;
+char alphabet[5];
+char numpad[5];
+
+// send message 2
+if(@[W:HW05243] == 1){
+	data2send[11] = 0x31;
+	// byte 1 // bench test
+	temp = @[W:HW09993];
+	data2send[12] = (temp >> 4) + 0x30;
+	data2send[13] = (temp & 0x0f) + 0x30;
+	data2send[16] = 0x30;
+	
+	// sortie
+	highByte = HIBYTE(@[W:HW09918]);
+	lowByte= LOBYTE(@[W:HW09918]);
+	// transform high byte to 2 ascii data
+	HEX2ASCII(((highByte & 0xff) >> 4) , &numpad[0], 1);
+	HEX2ASCII((highByte & 0x0f) , &numpad[1], 1);
+	
+	// transform low byte to 2 ascii data
+	HEX2ASCII(((lowByte & 0xff) >> 4) , &numpad[2], 1);
+	HEX2ASCII((lowByte & 0x0f) , &numpad[3], 1);
+	
+		
+	// high byte index
+	data2send[14] = numpad[0];
+	data2send[15] = numpad[1];
+	
+	// low byte index
+	data2send[16] = numpad[2];
+	data2send[17] = numpad[3];
+	
+	// cycle
+	highByte = HIBYTE(@[W:HW09919]);
+	lowByte= LOBYTE(@[W:HW09919]);
+	// transform high byte to 2 ascii data
+	HEX2ASCII(((highByte & 0xff) >> 4) , &numpad[0], 1);
+	HEX2ASCII((highByte & 0x0f) , &numpad[1], 1);
+	
+	// transform low byte to 2 ascii data
+	HEX2ASCII(((lowByte & 0xff) >> 4) , &numpad[2], 1);
+	HEX2ASCII((lowByte & 0x0f) , &numpad[3], 1);
+	
+		
+	// high byte index
+	data2send[18] = numpad[0];
+	data2send[19] = numpad[1];
+	
+	// low byte index
+	data2send[20] = numpad[2];
+	data2send[21] = numpad[3];
+	
+	// joystick
+	highByte = HIBYTE(@[W:HW09920]);
+	lowByte= LOBYTE(@[W:HW09920]);
+	// transform high byte to 2 ascii data
+	HEX2ASCII(((highByte & 0xff) >> 4) , &numpad[0], 1);
+	HEX2ASCII((highByte & 0x0f) , &numpad[1], 1);
+	
+	// transform low byte to 2 ascii data
+	HEX2ASCII(((lowByte & 0xff) >> 4) , &numpad[2], 1);
+	HEX2ASCII((lowByte & 0x0f) , &numpad[3], 1);
+	
+		
+	// high byte index
+	data2send[22] = numpad[0];
+	data2send[23] = numpad[1];
+	
+	// low byte index
+	data2send[24] = numpad[2];
+	data2send[25] = numpad[3];
+} else if(@[W:HW05243] == 2) {
+	data2send[11] = 0x32;
+	data2send[16] = 0x30;
+	
+	// counter
+	highByte = HIBYTE(@[W:HW07777]);
+	lowByte= LOBYTE(@[W:HW07777]);
+	// transform high byte to 2 ascii data
+	HEX2ASCII(((highByte & 0xff) >> 4) , &numpad[0], 1);
+	HEX2ASCII((highByte & 0x0f) , &numpad[1], 1);
+	
+	// transform low byte to 2 ascii data
+	HEX2ASCII(((lowByte & 0xff) >> 4) , &numpad[2], 1);
+	HEX2ASCII((lowByte & 0x0f) , &numpad[3], 1);
+	
+	// high byte index
+	data2send[12] = numpad[0];
+	data2send[13] = numpad[1];
+	
+	// low byte index
+	data2send[14] = numpad[2];
+	data2send[15] = numpad[3];
+		
+	// event&counter bit
+	temp = @[W:HW09878];
+	data2send[16] = (temp >> 4) + 0x30;
+	data2send[17] = (temp & 0x0f) + 0x30;
+	
+	
+} else {
+	// byte 2 & 3 // joystick output
+	alphabet[0]=0x30;
+	alphabet[1]=0x30;
+	alphabet[2]=0x30;
+	alphabet[3]=0x30;
+	alphabet[4]=0x00;
+	
+	if(@[X:HW09995.5] == 0){
+		@[X:HW09990.0] = 0;
+		@[X:HW09990.1] = 0;
+		@[X:HW09990.2] = 0;
+	}
+	
+	// + & -
+	if(@[X:HW09992.0] == 1 && @[X:HW09992.1] == 0){
+		@[X:HW09992.3] = 1;
+		@[X:HW09992.4] = 0;
+		if(@[X:HW09992.5] == 0){
+			@[W:HW09096] = @[W:HW09996];
+			@[X:HW09992.5] = 1;
+		}
+	}
+	// num pad
+	if(@[X:HW09992.1] == 1 && @[X:HW09992.0] == 0){
+		@[X:HW09992.3] = 0;
+		@[X:HW09992.4] = 1;
+		if(@[X:HW09992.5] == 0){
+			@[W:HW09098] = @[W:HW09998];
+			@[X:HW09992.5] = 1;
+		}
+	}
+	// byte 4 // sol valve type
+	if(@[X:HW09990.0] == 1) {
+		data2send[17] = 0x31;
+	} else if(@[X:HW09990.1] == 1) {
+		data2send[17] = 0x32;
+	} else {
+		data2send[17] = 0x30;
+		@[W:HW09096] = 0x00;
+		@[W:HW09098] = 0x00;
+		@[W:HW09991] = 0;
+		@[W:HW09998] = 0;
+	}
+	
+	if(@[X:HW09992.3] == 1){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW09096]);
+		lowByte= LOBYTE(@[W:HW09096]);
+	}
+	// num pad
+	if(@[X:HW09992.4] == 1){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW09098]);
+		lowByte= LOBYTE(@[W:HW09098]);
+	}
+	
+	// transform high byte to 2 ascii data
+	HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+	HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+	
+	// transform low byte to 2 ascii data
+	HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+	HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+	
+	// high byte index
+	data2send[12] = alphabet[0];
+	data2send[13] = alphabet[1];
+	
+	// low byte index
+	data2send[14] = alphabet[2];
+	data2send[15] = alphabet[3];
+	
+	// byte  7  // normal output 1
+	temp = @[W:HW09994];
+	data2send[22] = (temp >> 4) + 0x30;
+	data2send[23] = (temp & 0x0f) + 0x30;
+	
+	// byte 8 // normal output 2
+	temp = @[W:HW09995];
+	data2send[24] = (temp >> 4) + 0x30;
+	data2send[25] = (temp & 0x0f) + 0x30;
+}
+
+//---------------------------- 
+// receive mode
+//---------------------------- 
+SetStrData ( @[W:HW09000], 0, &data2send );
+// when receive ready
+if(@[W:HW02345] == 1) {
+	// receive function
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// if receive data is not whole data, receive again
+	if(global_ReadSize < 27 && global_ReadSize > 0) {	
+		global_ReadSize = ReadFromIO(0,&global_Response[global_ReadSize], 27-global_ReadSize );
+	}	
+	// timeout checker - 1sec
+	@[W:HW02344]++;
+	// timeout
+	if(@[W:HW02344] > 8) {
+		// send message
+		@[W:HW02345] = 0;
+		// checker reset
+		@[W:HW02344] = 0;
+		// send message 1
+		@[X:HW05243.0] = 0;
+	}
+}
+//---------------------------- 
+
+//---------------------------- 
+//	transmit mode
+//---------------------------- 
+
+// when transmit ready
+if(@[W:HW02345] == 0 && @[W:HW02355] == 0) {
+	// transmit data
+	size232 = WriteToIO(0,&data2send[0], 27);
+	// reset tx buffer
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// total send counter
+	// ready to receive
+	@[W:HW02345] = 1;
+	// delay resend start
+	@[W:HW02355] = 1;
+} 
+//---------------------------- 
+
+//---------------------------- 
+//	delay resend message
+//---------------------------- 
+if(@[W:HW02355] > 0){
+	@[W:HW02355]++;
+}
+if(@[W:HW02355] > 10 ){
+	@[W:HW02355] = 0;
+}
+//---------------------------- 
+//---------------------------- 
+//	analyze received data
+//	hmi <-> ecu data length is always 27 bytes
+//---------------------------- 
+
+// when first byte is 0x65, which is sof	
+if(global_Response[0] == 0x65){
+	// when last byte is 0x0d, which is eof
+	if(global_Response[26] == 0x0d){
+		// receive complete ready to send
+		@[W:HW02345] = 0;
+		// timeout reset
+		@[W:HW02344] = 0;
+		
+		// message 1/2/3 converter
+		@[W:HW05243]++;
+		
+		if(@[W:HW05243] == 3){
+			@[W:HW05243] = 0;
+		}
+		//----------------
+		// connection check reset
+		@[W:HW19811] = 0;
+		
+		// get data only
+		for(global_rcv_cnt = 10; global_rcv_cnt < 26; global_rcv_cnt++){
+			// if alphabet data
+			if( global_Response[global_rcv_cnt] > 0x60){
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x57;
+			}
+			// if numeric data 
+			else {
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x30;
+			}
+		}
+		// received address
+		global_addr = (global_buffer[0] << 4) + global_buffer[1];
+		
+		////------------------------------ a ------------------------------////
+		if(global_addr == 0x8a) {	// main page data
+			int temp1 = 0;
+			int temp2 = 0;
+			// 속도 => 0 ~ 200
+			@[W:HW09980] = (global_buffer[2] << 4) + global_buffer[3];
+			
+			// 상승력 => 0 ~ 5000
+			temp1 = (global_buffer[4] << 4) + global_buffer[5];
+			temp2 = (global_buffer[6] << 4) + global_buffer[7];
+			
+			int liftForce = (temp1 << 8) + temp2;
+			
+			if(@[X:HW09873.3] == 1) {
+				liftForce = liftForce*2.4;
+			}
+		
+			@[W:HW09981] = liftForce;
+			
+			// 고도 => -100 ~ 330
+			temp1 = (global_buffer[8] << 4) + global_buffer[9];
+			temp2 = (global_buffer[10] << 4) + global_buffer[11];
+			
+			// temp3 = 0 = '-100'
+			int temp3=(temp1 << 8) + temp2;
+				
+			// numeric display
+			@[W:HW09982] = (temp3-100);
+			
+			// brake
+			temp1 = (global_buffer[12] << 4) + global_buffer[13];
+			
+			@[W:HW09983] = temp1;
+			
+			// input 1
+			temp1 = (global_buffer[14] << 4) + global_buffer[15]; 
+			@[W:HW09984] = temp1;
+			
+			if((temp1 &0x80)!= 0) {  //pjh25_0409_01, safety(DOOR가 7bit) 신호가 들어오면 heavein,payout취소
+				@[X:HW09993.0] = 0; //heavein = 0				
+				@[X:HW09993.1] = 0; //payout = 0				
+			}			
+			// disable bench test and joystick off when 4 conditions are on
+			// bench stop, ems, limit-h/l
+			if(@[X:HW09984.0] == 1){
+				// bench test
+				@[X:HW09995.7] = 0;
+				@[X:HW09993.0] = 0;
+				@[X:HW09993.1] = 0;
+				@[X:HW09993.2] = 0;
+				@[X:HW09993.3] = 0;
+				@[X:HW09993.4] = 0;
+				@[W:HW09918] = 0;
+				@[W:HW09919] = 0;
+				// joystick disable
+				@[X:HW09995.5] = 0;
+				@[W:HW09991] = 0;
+				@[W:HW09998] = 0;
+				@[X:HW09990.0] = 0;
+				@[X:HW09990.1] = 0;
+				@[X:HW09990.2] = 0;
+			}
+			else if(@[X:HW09988.0] == 1){
+				@[X:HW09995.7] = 0;
+				@[X:HW09993.0] = 0;
+				@[X:HW09993.1] = 0;
+				@[X:HW09993.2] = 0;
+				@[X:HW09993.3] = 0;
+				@[X:HW09993.4] = 0;
+				@[W:HW09918] = 0;
+				@[W:HW09919] = 0;
+				// joystick disable
+				@[X:HW09995.5] = 0;
+				@[W:HW09991] = 0;
+				@[W:HW09998] = 0;
+				@[X:HW09990.0] = 0;
+				@[X:HW09990.1] = 0;
+				@[X:HW09990.2] = 0;
+			}
+			else if(@[X:HW09988.3] == 1){
+				@[X:HW09995.7] = 0;
+				@[X:HW09993.0] = 0;
+				@[X:HW09993.1] = 0;
+				@[X:HW09993.2] = 0;
+				@[X:HW09993.3] = 0;
+				@[X:HW09993.4] = 0;
+				@[W:HW09918] = 0;
+				@[W:HW09919] = 0;
+				// joystick disable
+				@[X:HW09995.5] = 0;
+				@[W:HW09991] = 0;
+				@[W:HW09998] = 0;
+				@[X:HW09990.0] = 0;
+				@[X:HW09990.1] = 0;
+				@[X:HW09990.2] = 0;
+			}
+			 else if(@[X:HW09988.4] == 1){
+				@[X:HW09995.7] = 0;
+				@[X:HW09993.0] = 0;
+				@[X:HW09993.1] = 0;
+				@[X:HW09993.2] = 0;
+				@[X:HW09993.3] = 0;
+				@[X:HW09993.4] = 0;
+				@[W:HW09918] = 0;
+				@[W:HW09919] = 0;
+				// joystick disable
+				@[X:HW09995.5] = 0;
+				@[W:HW09991] = 0;
+				@[W:HW09998] = 0;
+				@[X:HW09990.0] = 0;
+				@[X:HW09990.1] = 0;
+				@[X:HW09990.2] = 0;
+			}
+		} 
+		////------------------------------ b ------------------------------////
+		else if(global_addr == 0x8b) {	// main page 2 
+			int temp1 = 0;
+			int temp2 = 0;
+			int sum = 0;
+			int rpm = 0;
+			// rpm
+			temp1 = (global_buffer[2] << 4) + global_buffer[3];
+			temp2 = (global_buffer[4] << 4) + global_buffer[5];
+			sum =  (temp1 << 8) + temp2;
+			rpm = sum * 0.125;
+			
+			@[W:HW09985] = rpm;
+			
+			// 솔 a
+			temp1 = (global_buffer[6] << 4) + global_buffer[7];
+			temp2 = (global_buffer[8] << 4) + global_buffer[9];
+			
+			int sola = (temp1 << 8) + temp2;
+			
+			@[W:HW09986] = sola;
+			// 솔 b
+			temp1 = (global_buffer[10] << 4) + global_buffer[11];
+			temp2 = (global_buffer[12] << 4) + global_buffer[13];
+			
+			int solb = (temp1 << 8) + temp2;
+			
+			@[W:HW09987] = solb;
+			
+			// input 2 : Safety- position 
+			// 0:EMS, 1:LightCurtain, 2:PPD, 3:Limit-H,  4:Limit-L
+			temp1 = (global_buffer[14] << 4) + global_buffer[15]; 
+			@[W:HW09988] = temp1;
+			if(temp1 != 0) {  //pjh25_0409_01, safety 신호가 들어오면 heavein,payout취소
+				@[X:HW09993.0] = 0; //heavein = 0				
+				@[X:HW09993.1] = 0; //payout = 0				
+			}
+		} else if(global_addr == 0x8c) {
+			int temp1 = 0;
+			int temp2 = 0;
+			int sum = 0;
+			
+			// sortie
+			temp1 = (global_buffer[2] << 4) + global_buffer[3];
+			temp2 = (global_buffer[4] << 4) + global_buffer[5];
+			sum =  (temp1 << 8) + temp2;
+			@[W:HW09970] = sum;
+			// cycle
+			temp1 = (global_buffer[6] << 4) + global_buffer[7];
+			temp2 = (global_buffer[8] << 4) + global_buffer[9];
+			sum =  (temp1 << 8) + temp2;
+			@[W:HW09972] = sum;
+			// joystick
+			temp1 = (global_buffer[10] << 4) + global_buffer[11];
+			temp2 = (global_buffer[12] << 4) + global_buffer[13];
+			sum =  (temp1 << 8) + temp2;
+			@[W:HW09974] = sum;
+			
+		}
+	}
+}
+
+ERROR:
+{
+
+}

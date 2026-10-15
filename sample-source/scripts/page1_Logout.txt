@@ -1,0 +1,22 @@
+//---------------------------- 
+//	 logout
+//---------------------------- 
+
+//---------------------------- 
+// logout message pop up
+//---------------------------- 
+// message string 4 - successfully logout
+@[W:HW21119] = 4;
+// pop up 3 on
+@[X:HW21100.3] = 1;			
+// admin logout
+@[X:HW21100.5] = 0;
+
+// go to login screen
+ChangeBaseScreen(2);
+
+
+ERROR:
+{
+
+}

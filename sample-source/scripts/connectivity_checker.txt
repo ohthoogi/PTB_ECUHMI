@@ -1,0 +1,25 @@
+//---------------------------- 
+//	check the communication status
+//	if failed to receive data from ecu for more than 5 seconds
+//	show connection disconnect pop up
+//---------------------------- 
+
+// disconnect counter
+// reset when data received
+// page1_req_rcv, page3_setValue, page4_setValue, page5_setValue, page6_setValue
+if(@[W:HS0010] != 2){
+	@[W:HW19811] += 1;
+}
+// if didn't recieve data for more than 5 seconds
+if(@[W:HW19811] > 6){
+	// show pop up
+	@[X:HW19815.0] = 1;
+} else {
+	// close pop up - default
+	@[X:HW19815.0] = 0;
+}
+
+ERROR:
+{
+
+}

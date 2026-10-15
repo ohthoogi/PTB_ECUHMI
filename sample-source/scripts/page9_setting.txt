@@ -1,0 +1,647 @@
+//---------------------------- 
+//	page 9 data tx and rx
+//
+//	rx data
+//
+//	tx data
+//
+//---------------------------- 
+// rx buffer
+char global_Response[28];
+// ecu data buffer
+char global_buffer[17];
+
+// received data size
+int global_ReadSize;
+
+// ecu data buffer counter
+int global_buffercnt=0;
+// to get display data only from whole rx data
+int global_rcv_cnt=0;
+// ecu data address
+char global_addr=0;
+
+// tx data buffer
+char data2send[28];
+// tx data size
+int size232=0;
+
+//---------------------------- 
+// 	const data
+//---------------------------- 
+
+// cmd
+data2send[0] = 0x65;
+// id
+data2send[1] = 0x30;
+data2send[2] = 0x63;
+
+data2send[3] = 0x31;
+data2send[4] = 0x32;
+
+data2send[5] = 0x33;
+data2send[6] = 0x34;
+
+data2send[7] = 0x31;
+data2send[8] = 0x30;
+// dlc
+data2send[9] = 0x38;
+
+// byte1 // addr
+// page 1
+data2send[10] = 0x61;
+// message 1
+data2send[11] = 0x30;
+
+// byte 2 // 
+data2send[12] = 0x33;
+data2send[13] = 0x30;
+// byte 3 // 
+data2send[14] = 0x30;
+data2send[15] = 0x30;
+// byte 4 // 
+data2send[16] = 0x30;
+data2send[17] = 0x30;
+// byte 5 //
+data2send[18] = 0x30;
+data2send[19] = 0x30;
+// byte 6 // 
+data2send[20] = 0x30;
+data2send[21] = 0x30;
+// byte7 // 
+data2send[22] = 0x30;
+data2send[23] = 0x30;
+// byte 8 // 
+data2send[24] = 0x30;
+data2send[25] = 0x30;
+
+// end byte <cr>
+data2send[26] = 0x0d;
+
+//---------------------------- 
+
+
+
+int temp;
+int highByte;
+int lowByte;
+char numpad[5];
+
+if (@[X:HW65051.0] == 1) {
+	 // send setting value
+    if(@[W:HW65050] == 0) {
+        	// A1
+        	data2send[11] = 0x31;
+        	
+		// sol valve A
+		highByte = HIBYTE(@[W:HW65000]);
+		lowByte  = LOBYTE(@[W:HW65000]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[12] = numpad[0];
+		data2send[13] = numpad[1];
+		data2send[14] = numpad[2];
+		data2send[15] = numpad[3];
+		
+		// sol valve B
+		highByte = HIBYTE(@[W:HW65001]);
+		lowByte  = LOBYTE(@[W:HW65001]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[16] = numpad[0];
+		data2send[17] = numpad[1];
+		data2send[18] = numpad[2];
+		data2send[19] = numpad[3];
+		
+		// 대표성능 pay out 가감속구간
+		highByte = HIBYTE(@[W:HW65010]);
+		lowByte  = LOBYTE(@[W:HW65010]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[20] = numpad[0];
+		data2send[21] = numpad[1];
+		data2send[22] = numpad[2];
+		data2send[23] = numpad[3];
+		
+		// 대표성능 pay out 최대값 high
+		highByte = HIBYTE(@[W:HW65011]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		
+		data2send[24] = numpad[0];
+		data2send[25] = numpad[1];
+		
+    }
+    else if(@[W:HW65050] == 1) {
+        	// A2
+        	data2send[11] = 0x32;
+        
+        	// 대표성능 pay out 최대값 low
+		lowByte  = LOBYTE(@[W:HW65011]);
+		
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[1], 1);
+		
+		data2send[12] = numpad[0];
+		data2send[13] = numpad[1];
+		
+		// 대표성능 heave in 가감속구간
+		highByte = HIBYTE(@[W:HW65020]);
+		lowByte  = LOBYTE(@[W:HW65020]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[14] = numpad[0];
+		data2send[15] = numpad[1];
+		data2send[16] = numpad[2];
+		data2send[17] = numpad[3];		
+		
+		// 대표성능 heave in 최대값
+		highByte = HIBYTE(@[W:HW65021]);
+		lowByte  = LOBYTE(@[W:HW65021]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[18] = numpad[0];
+		data2send[19] = numpad[1];
+		data2send[20] = numpad[2];
+		data2send[21] = numpad[3];
+				
+		// 최대 견인력 pay out 가감속구간
+		highByte = HIBYTE(@[W:HW65030]);
+		lowByte  = LOBYTE(@[W:HW65030]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[22] = numpad[0];
+		data2send[23] = numpad[1];
+		data2send[24] = numpad[2];
+		data2send[25] = numpad[3];
+		
+    }
+    else if(@[W:HW65050] == 3) {
+        	// A3
+        	data2send[11] = 0x33;       
+        		
+		// 최대 견인력 pay out 최대값
+		highByte = HIBYTE(@[W:HW65031]);
+		lowByte  = LOBYTE(@[W:HW65031]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[12] = numpad[0];
+		data2send[13] = numpad[1];
+		data2send[14] = numpad[2];
+		data2send[15] = numpad[3];
+		
+		// 최대 견인력 heave in 가감속구간
+		highByte = HIBYTE(@[W:HW65040]);
+		lowByte  = LOBYTE(@[W:HW65040]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[16] = numpad[0];
+		data2send[17] = numpad[1];
+		data2send[18] = numpad[2];
+		data2send[19] = numpad[3];
+		
+		// 최대 견인력 heave in 최대값
+		highByte = HIBYTE(@[W:HW65041]);
+		lowByte  = LOBYTE(@[W:HW65041]);
+		
+		HEX2ASCII(((highByte & 0xff) >> 4), &numpad[0], 1);
+		HEX2ASCII((highByte & 0x0f), &numpad[1], 1);
+		HEX2ASCII(((lowByte & 0xff) >> 4), &numpad[2], 1);
+		HEX2ASCII((lowByte & 0x0f), &numpad[3], 1);
+		
+		data2send[20] = numpad[0];
+		data2send[21] = numpad[1];
+		data2send[22] = numpad[2];
+		data2send[23] = numpad[3];
+    } else {
+		data2send[11] = 0x30;
+	}	
+} else {
+	// send message converter
+	if(@[W:HW65243] == 1){
+		data2send[13] = 0x31;
+	} else if(@[W:HW65243] == 2) {
+		data2send[13] = 0x32;
+	} else {
+		data2send[13] = 0x30;
+	}
+}
+
+//---------------------------- 
+// receive mode
+//---------------------------- 
+SetStrData ( @[W:HW09000], 0, &data2send );
+// when receive ready
+if(@[W:HW02345] == 1) {
+	// receive function
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// if receive data is not whole data, receive again
+	if(global_ReadSize < 27 && global_ReadSize > 0) {	
+		global_ReadSize = ReadFromIO(0,&global_Response[global_ReadSize], 27-global_ReadSize );
+	}	
+	// timeout checker - 1sec
+	@[W:HW02344]++;
+	// timeout
+	if(@[W:HW02344] > 8) {
+		// send message
+		@[W:HW02345] = 0;
+		// checker reset
+		@[W:HW02344] = 0;
+	}
+}
+//---------------------------- 
+
+//---------------------------- 
+//	transmit mode
+//---------------------------- 
+
+// when transmit ready
+if(@[W:HW02345] == 0 && @[W:HW02355] == 0) {
+	// transmit data
+	size232 = WriteToIO(0,&data2send[0], 27);
+	// reset tx buffer
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// total send counter
+	// ready to receive
+	@[W:HW02345] = 1;
+	// delay resend start
+	@[W:HW02355] = 1;
+	
+	/*
+	// debug 260921
+	int debugHigh = 0;
+	int debugLow = 0;
+	
+	@[W:HW01260] = data2send[10];
+	@[W:HW01261] = data2send[11];
+	
+	// byte 1
+	if(data2send[10] > 0x60){
+    	debugHigh = data2send[10] - 0x57;
+	} else {
+    	debugHigh = data2send[10] - 0x30;
+	}
+	
+	if(data2send[11] > 0x60){
+    	debugLow = data2send[11] - 0x57;
+	} else {
+    	debugLow = data2send[11] - 0x30;
+	}
+	
+	@[W:HW01270] = (debugHigh << 4) + debugLow;
+	
+	
+	// byte 2
+	if(data2send[12] > 0x60){
+    	debugHigh = data2send[12] - 0x57;
+	} else {
+    	debugHigh = data2send[12] - 0x30;
+	}
+	
+	if(data2send[13] > 0x60){
+    	debugLow = data2send[13] - 0x57;
+	} else {
+    	debugLow = data2send[13] - 0x30;
+	}
+	
+	@[W:HW01271] = (debugHigh << 4) + debugLow;
+	
+	
+	// byte 3
+	if(data2send[14] > 0x60){
+    	debugHigh = data2send[14] - 0x57;
+	} else {
+    	debugHigh = data2send[14] - 0x30;
+	}
+	
+	if(data2send[15] > 0x60){
+    	debugLow = data2send[15] - 0x57;
+	} else {
+    	debugLow = data2send[15] - 0x30;
+	}
+	
+	@[W:HW01272] = (debugHigh << 4) + debugLow;
+	
+	
+	// byte 4
+	if(data2send[16] > 0x60){
+    	debugHigh = data2send[16] - 0x57;
+	} else {
+    	debugHigh = data2send[16] - 0x30;
+	}
+	
+	if(data2send[17] > 0x60){
+    	debugLow = data2send[17] - 0x57;
+	} else {
+    	debugLow = data2send[17] - 0x30;
+	}
+	
+	@[W:HW01273] = (debugHigh << 4) + debugLow;
+	
+	
+	// byte 5
+	if(data2send[18] > 0x60){
+    	debugHigh = data2send[18] - 0x57;
+	} else {
+    	debugHigh = data2send[18] - 0x30;
+	}
+	
+	if(data2send[19] > 0x60){
+    	debugLow = data2send[19] - 0x57;
+	} else {
+    	debugLow = data2send[19] - 0x30;
+	}
+	
+	@[W:HW01274] = (debugHigh << 4) + debugLow;
+	
+	
+	// byte 6
+	if(data2send[20] > 0x60){
+    	debugHigh = data2send[20] - 0x57;
+	} else {
+    	debugHigh = data2send[20] - 0x30;
+	}
+	
+	if(data2send[21] > 0x60){
+    	debugLow = data2send[21] - 0x57;
+	} else {
+    	debugLow = data2send[21] - 0x30;
+	}
+	
+	@[W:HW01275] = (debugHigh << 4) + debugLow;
+	
+	
+	// byte 7
+	if(data2send[22] > 0x60){
+    	debugHigh = data2send[22] - 0x57;
+	} else {
+    	debugHigh = data2send[22] - 0x30;
+	}
+	
+	if(data2send[23] > 0x60){
+    	debugLow = data2send[23] - 0x57;
+	} else {
+    	debugLow = data2send[23] - 0x30;
+	}
+	
+	@[W:HW01276] = (debugHigh << 4) + debugLow;
+	
+	
+	// byte 8
+	if(data2send[24] > 0x60){
+    	debugHigh = data2send[24] - 0x57;
+	} else {
+    	debugHigh = data2send[24] - 0x30;
+	}
+	
+	if(data2send[25] > 0x60){
+    	debugLow = data2send[25] - 0x57;
+	} else {
+    	debugLow = data2send[25] - 0x30;
+	}
+	
+	@[W:HW01277] = (debugHigh << 4) + debugLow;
+	*/
+} 
+//---------------------------- 
+
+//---------------------------- 
+//	delay resend message
+//---------------------------- 
+if(@[W:HW02355] > 0){
+	@[W:HW02355]++;
+}
+if(@[W:HW02355] > 10 ){
+	@[W:HW02355] = 0;
+}
+//---------------------------- 
+//---------------------------- 
+//	analyze received data
+//	hmi <-> ecu data length is always 27 bytes
+//---------------------------- 
+
+// when first byte is 0x65, which is sof	
+if(global_Response[0] == 0x65){
+	// when last byte is 0x0d, which is eof
+	if(global_Response[26] == 0x0d){
+		// receive complete ready to send
+		@[W:HW02345] = 0;
+		// timeout reset
+		@[W:HW02344] = 0;
+		
+		// message 1/2/3 converter reset
+		if (@[X:HW65051.0] == 0) {
+			if(@[W:HW65243] > 2){
+				@[W:HW65243] = 0;
+			}
+		} 
+		//----------------
+		// connection check reset
+		@[W:HW19811] = 0;
+		
+		// get data only
+		for(global_rcv_cnt = 10; global_rcv_cnt < 26; global_rcv_cnt++){
+			// if alphabet data
+			if( global_Response[global_rcv_cnt] > 0x60){
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x57;
+			}
+			// if numeric data 
+			else {
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x30;
+			}
+		}
+		// received address
+		global_addr = (global_buffer[0] << 4) + global_buffer[1];
+		/*
+		// debug 260921
+		@[W:HW01280] = (global_buffer[0] << 4) + global_buffer[1];
+		@[W:HW01281] = (global_buffer[2] << 4) + global_buffer[3];
+		@[W:HW01282] = (global_buffer[4] << 4) + global_buffer[5];
+		@[W:HW01283] = (global_buffer[6] << 4) + global_buffer[7];
+		@[W:HW01284] = (global_buffer[8] << 4) + global_buffer[9];
+		@[W:HW01285] = (global_buffer[10] << 4) + global_buffer[11];
+		@[W:HW01286] = (global_buffer[12] << 4) + global_buffer[13];
+		@[W:HW01287] = (global_buffer[14] << 4) + global_buffer[15];
+		*/
+		////------------------------------ a ------------------------------////
+		if(global_addr == 0xaa) {	// main page data
+			int temp1 = 0;
+			int temp2 = 0;
+			if(@[X:HW65051.1] == 0) {
+				// sol valve a
+				temp1 = (global_buffer[2] << 4) + global_buffer[3];
+				temp2 = (global_buffer[4] << 4) + global_buffer[5];
+				@[W:HW65000] = (temp1 << 8) + temp2;
+				
+				// sol valve b
+				temp1 = (global_buffer[6] << 4) + global_buffer[7];
+				temp2 = (global_buffer[8] << 4) + global_buffer[9];
+				@[W:HW65001] = (temp1 << 8) + temp2;
+				
+				
+				// 대표성능 pay out 가감속구간
+				temp1 = (global_buffer[10] << 4) + global_buffer[11];
+				temp2 = (global_buffer[12] << 4) + global_buffer[13];
+				@[W:HW65010] = (temp1 << 8) + temp2;
+				
+				// 대표성능 pay out 최대값 high
+				temp1 = (global_buffer[14] << 4) + global_buffer[15];	
+				@[W:HW65012]  = temp1;
+				
+				@[X:HW65051.2] = 1;
+				
+				if(@[X:HW65051.2] == 1 && @[X:HW65051.3] == 1 && @[X:HW65051.4] == 1){
+					@[X:HW65051.1] = 1;
+				}
+			}
+			@[W:HW65243] = 1;
+		} 
+		////------------------------------ b ------------------------------////
+		else if(global_addr == 0xab) {	// main page 2 
+			int temp1 = 0;
+			int temp2 = 0;
+			if(@[X:HW65051.1] == 0) {
+				// 대표성능 pay out 최대값 low
+				temp1 = (global_buffer[2] << 4) + global_buffer[3];
+				
+				@[W:HW65013] = temp1;
+				
+				int payHigh = 0;
+				int payLow = 0;
+				
+				payHigh = @[W:HW65012];
+				payLow = @[W:HW65013];
+				
+				@[W:HW65011] = (payHigh << 8) + payLow;
+				
+				// 대표성능 heave in 가감속구간
+				temp1 = (global_buffer[4] << 4) + global_buffer[5];
+				temp2 = (global_buffer[6] << 4) + global_buffer[7];
+				@[W:HW65020] = (temp1 << 8) + temp2;
+				
+				
+				// 대표성능 heave in 최대값
+				temp1 = (global_buffer[8] << 4) + global_buffer[9];
+				temp2 = (global_buffer[10] << 4) + global_buffer[11];
+				@[W:HW65021] = (temp1 << 8) + temp2;
+				
+				// 최대견인력 pay out 가감속구간
+				temp1 = (global_buffer[12] << 4) + global_buffer[13];	
+				temp2 = (global_buffer[14] << 4) + global_buffer[15];	
+				@[W:HW65030]  = (temp1 << 8) + temp2;
+				
+				@[X:HW65051.3] = 1;
+				
+				if(@[X:HW65051.2] == 1 && @[X:HW65051.3] == 1 && @[X:HW65051.4] == 1){
+					@[X:HW65051.1] = 1;
+				}
+			}
+			@[W:HW65243] = 2;
+		} 
+		////------------------------------ c ------------------------------////
+		else if(global_addr == 0xac) {
+			int temp1 = 0;
+			int temp2 = 0;
+			if(@[X:HW65051.1] == 0) {
+				// 최대견인력 pay out 최대값
+				temp1 = (global_buffer[2] << 4) + global_buffer[3];
+				temp2 = (global_buffer[4] << 4) + global_buffer[5];
+				@[W:HW65031] = (temp1 << 8) + temp2;
+				
+				// 최대견인력 heave in 가감속구간
+				temp1 = (global_buffer[6] << 4) + global_buffer[7];
+				temp2 = (global_buffer[8] << 4) + global_buffer[9];
+				@[W:HW65040] = (temp1 << 8) + temp2;
+				
+				
+				// 최대견인력 heave in 최대값
+				temp1 = (global_buffer[10] << 4) + global_buffer[11];
+				temp2 = (global_buffer[12] << 4) + global_buffer[13];
+				@[W:HW65041] = (temp1 << 8) + temp2;	
+							
+				@[X:HW65051.4] = 1;
+				
+				if(@[X:HW65051.2] == 1 && @[X:HW65051.3] == 1 && @[X:HW65051.4] == 1){
+					@[X:HW65051.1] = 1;
+				}
+			}
+			@[W:HW65243] = 0;
+		}
+		////------------------------------ d ------------------------------////
+		else if(global_addr == 0xad) {
+			int temp1 = 0;
+			
+			// received message
+			temp1 = (global_buffer[2] << 4) + global_buffer[3];
+			
+			if(temp1 == 0x30){
+				@[X:HW65050.0] = 1;
+				// pop up 5 on
+				@[X:HW39111.0] = 1;
+				// string message 24 - "saving"
+				@[W:HW33333] = 24;
+			} else if(temp1 == 0x31) {
+				@[X:HW65050.1] = 1;
+			} else if(temp1 == 0x32)  {
+				@[X:HW65050.2] = 1;
+				// pop up 5 on
+				@[X:HW39111.0] = 1;
+				// string message 17 - "save complete"
+				@[W:HW33333] = 17;
+			} else {
+				@[W:HW65050] = 0;
+				@[X:HW65051.0] = 0;
+				@[X:HW65051.1] = 0;
+				@[X:HW65051.2] = 0;
+				@[X:HW65051.3] = 0;
+				@[X:HW65051.4] = 0;
+			}
+			if(@[W:HW65050] == 7) {
+				@[W:HW65050] = 0;
+				@[X:HW65051.0] = 0;
+				@[X:HW65051.1] = 0;
+				@[X:HW65051.2] = 0;
+				@[X:HW65051.3] = 0;
+				@[X:HW65051.4] = 0;
+			}
+		}
+	}
+}
+
+ERROR:
+{
+
+}

@@ -1,0 +1,937 @@
+//---------------------------- 
+//	page 6 data tx and rx
+//
+//	rx data
+//	- 오일탱크 온도
+//	- 1번 쿨러 온도
+//	- 2번 쿨러 온도
+//	- 3번 쿨러 온도
+//
+//	tx data
+//	- page number
+//	- new 오일탱크 온도
+//	- new 1번 쿨러 온도
+//	- new 2번 쿨러 온도
+//	- new 3번 쿨러 온도
+//	- reset 
+//
+//---------------------------- 
+
+// rx buffer
+char global_Response[28];
+// ecu data buffer
+char global_buffer[17];
+
+// received data size
+int global_ReadSize;
+
+// ecu data buffer counter
+int global_buffercnt=0;
+// to get display data only from whole rx data
+int global_rcv_cnt=0;
+// ecu data address
+char global_addr=0;
+
+// tx data buffer
+char data2send[28];
+// tx data size
+int size232=0;
+
+//---------------------------- 
+// 	const data
+//---------------------------- 
+
+// cmd
+data2send[0] = 0x65;
+// id
+data2send[1] = 0x30;
+data2send[2] = 0x63;
+
+data2send[3] = 0x31;
+data2send[4] = 0x32;
+
+data2send[5] = 0x33;
+data2send[6] = 0x34;
+
+data2send[7] = 0x31;
+data2send[8] = 0x30;
+// dlc
+data2send[9] = 0x38;
+
+// page number
+data2send[10] = 0x35; 
+
+// empty space
+// byte2
+data2send[12] = 0x30;
+data2send[13] = 0x30;
+// byte3
+data2send[14] = 0x30;
+data2send[15] = 0x30;
+// byte4
+data2send[16] = 0x30;
+data2send[17] = 0x30;
+// byte5
+data2send[18] = 0x30;
+data2send[19] = 0x30;
+// byte6
+data2send[20] = 0x30;
+data2send[21] = 0x30;
+// byte7
+data2send[22] = 0x30;
+data2send[23] = 0x30;
+// byte8
+data2send[24] = 0x30;
+data2send[25] = 0x30;
+
+// end byte <cr>
+data2send[26] = 0x0d;
+//---------------------------- 
+
+// +- button
+// .0 = +10	.1 = +1	.2 = -10	 .3 = -1
+// HW41 = 1 row		HW42 = 2 row	HW43 = 3 row	HW44 = 4 row
+
+//-----------------------
+//	+,- button pressed
+//-----------------------
+
+// + 1 pressed - button 1 - 하한
+if(@[X:HW61100.0] == 1){
+	// if value less than 60
+	if(@[W:HW61115] < 100) {
+		// add 1 to value
+		@[W:HW61115] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW61100.5] = 1;
+	// reset button
+	@[X:HW61100.0] = 0;
+}
+// - 1 pressed - button 1 - 하한 
+else if(@[X:HW61100.1] == 1){
+	// if value more than 35
+	if(@[W:HW61115] > 0) {
+		// decrease value by 1
+		@[W:HW61115] -= 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW61100.5] = 1;
+	// reset button
+	@[X:HW61100.1] = 0;
+} 
+// + 1 pressed - button 1 - 상한
+else if(@[X:HW61100.2] == 1){
+	// if value less than 60
+	if(@[W:HW61116] < 100){
+		// add 1 to value
+		@[W:HW61116] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW61100.5] = 1;
+	// reset button
+	@[X:HW61100.2] = 0;
+}
+// - 1 pressed - button 1 - 상한 
+else if(@[X:HW61100.3] == 1){
+	// if value more than 35
+	if(@[W:HW61116] > 0){
+		// decrease value by 1
+		@[W:HW61116] -= 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW61100.5] = 1;
+	// reset button
+	@[X:HW61100.3] = 0;
+} 
+
+// + 1 pressed - button 2 - 하한
+else if(@[X:HW62100.0] == 1){
+	// if value less than 60
+	if(@[W:HW61125] < 100) {
+		// add 1 to value
+		@[W:HW61125] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW62100.5] = 1;
+	// reset button
+	@[X:HW62100.0] = 0;
+} 
+// - 1 pressed - button 2 - 하한 
+else if(@[X:HW62100.1] == 1){
+	// if value more than 10
+	if(@[W:HW61125] > 0) {
+		// decrease value by 1
+		@[W:HW61125] -= 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW62100.5] = 1;
+	// reset button
+	@[X:HW62100.1] = 0;
+}
+// + 1 pressed - button 2 - 상한  
+else if(@[X:HW62100.2] == 1){
+	// if value less than 60
+	if(@[W:HW61126] < 100){
+		// add 1 to value
+		@[W:HW61126] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW62100.5] = 1;
+	// reset button
+	@[X:HW62100.2] = 0;
+}
+// - 1 pressed - button 2 - 상한  
+else if(@[X:HW62100.3] == 1){
+	// if value more than 10
+	if(@[W:HW61126] > 0){
+		// decrease value by 1
+		@[W:HW61126] -= 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW62100.5] = 1;
+	// reset button
+	@[X:HW62100.3] = 0;
+} 
+
+// + 1 pressed - button 3 - 하한
+else if(@[X:HW63100.0] == 1){
+	// if value less than 60
+	if(@[W:HW61135] < 100) {
+		// add 1 to value
+		@[W:HW61135] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW63100.5] = 1;
+	// reset button
+	@[X:HW63100.0] = 0;
+}
+// - 1 pressed - button 3 - 하한  
+else if(@[X:HW63100.1] == 1){
+	// if value more than 10
+	if(@[W:HW61135] > 0) {
+		// decrease value by 1
+		@[W:HW61135] -= 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW63100.5] = 1;
+	// reset button
+	@[X:HW63100.1] = 0;
+}
+// + 1 pressed - button 3 - 상한  
+else if(@[X:HW63100.2] == 1){
+	// if value less than 60
+	if(@[W:HW61136] < 100){
+		// add 1 to value
+		@[W:HW61136] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW63100.5] = 1;
+	// reset button
+	@[X:HW63100.2] = 0;
+}
+// - 1 pressed - button 3 - 상한  
+else if(@[X:HW63100.3] == 1){
+	// if value more than 10
+	if(@[W:HW61136] > 0){
+		// decrease value by 1
+		@[W:HW61136] -= 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW63100.5] = 1;
+	// reset button
+	@[X:HW63100.3] = 0;
+} 
+
+// + 1 pressed - button 4 - 하한
+else if(@[X:HW64100.0] == 1){
+	// if value less than 60
+	if(@[W:HW61145] < 100) {
+		// add 1 to value
+		@[W:HW61145] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW64100.5] = 1;
+	// reset button
+	@[X:HW64100.0] = 0;
+}
+// - 1 pressed - button 4 - 하한  
+else if(@[X:HW64100.1] == 1){
+	// if value more than 10
+	if(@[W:HW61145] > 0) {
+		@[W:HW61145] -= 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW64100.5] = 1;
+	// reset button
+	@[X:HW64100.1] = 0;
+}
+// + 1 pressed - button 4 - 상한  
+else if(@[X:HW64100.2] == 1){
+	// if value less than 60
+	if(@[W:HW61146] < 100){
+		// add 1 to value
+		@[W:HW61146] += 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW64100.5] = 1;
+	// reset button
+	@[X:HW64100.2] = 0;
+}
+// - 1 pressed - button 4 - 상한  
+else if(@[X:HW64100.3] == 1){
+	// if value more than 10
+	if(@[W:HW61146] > 0){
+		@[W:HW61146] -= 1;
+	} else {
+		// pop up 1 on
+		@[X:HW19988.0] = 1;
+	}
+	// stop setting '현재 설정 값' to '이전 설정 값'
+	@[X:HW64100.5] = 1;
+	// reset button
+	@[X:HW64100.3] = 0;
+}
+//---------------------------- 
+
+//---------------------------- 
+//	save button pressed
+//
+//	if data is more than 1 byte
+//	seperate the value to high byte and low byte
+//	and send it to ecu
+//	
+//---------------------------- 
+
+//---------------------------- 
+//	variables
+//---------------------------- 
+int highByte=0;
+int lowByte=0;
+int fullByte = 0;
+char alphabet[4];
+//---------------------------- 
+
+
+//---------------------------- 
+// receive mode
+//---------------------------- 
+
+// when receive ready
+if(@[W:HW62345] == 1){
+	// receive function
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// if receive data is not whole data, receive again
+	if(global_ReadSize < 27 && global_ReadSize > 0) {	
+		global_ReadSize = ReadFromIO(0,&global_Response[global_ReadSize], 27-global_ReadSize );
+	}	
+	// timeout checker - 1sec
+	@[W:HW62344]++;
+	// timeout
+	if(@[W:HW62344] > 8) {
+		// send message
+		@[W:HW62345] = 0;
+		// checker reset
+		@[W:HW62344] = 0;
+		// send message 1
+		@[X:HW65243.0] = 0;
+		
+		// reset buttons
+		// button 1
+		@[X:HW61100.4] = 0;
+		// button 2
+		@[X:HW62100.4] = 0;
+		// button 3
+		@[X:HW63100.4] = 0;
+		// button 4
+		@[X:HW64100.0] = 0;
+		// reset button 
+		@[X:HW65100.0] = 0;
+	}
+}
+//---------------------------- 
+
+// button 1 pressed
+if(@[X:HW61100.4] == 1) {
+	// data address for button 1
+	data2send[11] = 0x31; 
+	// data more than 1 byte - 하한
+	if(@[W:HW61115] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW61115]);
+		lowByte= LOBYTE(@[W:HW61115]);	
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[16] = alphabet[0];
+		data2send[17] = alphabet[1];
+	
+		// low byte index	
+		data2send[18] = alphabet[2];
+		data2send[19] = alphabet[3];
+	}
+	// data 1 byte only - 하한 
+	else {
+		fullByte = @[W:HW61115];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[18] = alphabet[0];
+		data2send[19] = alphabet[1];
+	}
+	// data more than 1 byte - 상한
+	if(@[W:HW61116] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW61116]);
+		lowByte= LOBYTE(@[W:HW61116]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[12] = alphabet[0];
+		data2send[13] = alphabet[1];
+		
+		// low byte index
+		data2send[14] = alphabet[2];
+		data2send[15] = alphabet[3];
+		
+	}
+	// data 1 byte only - 상한 
+	else {
+		fullByte = @[W:HW61116];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[14] = alphabet[0];
+		data2send[15] = alphabet[1];
+	}
+} 
+// button 2 pressed
+else if(@[X:HW62100.4] == 1) {
+	// data address for button 2
+	data2send[11] = 0x32; 
+	// data more than 1 byte - 하한
+	if(@[W:HW61125] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW61125]);
+		lowByte= LOBYTE(@[W:HW61125]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[16] = alphabet[0];
+		data2send[17] = alphabet[1];
+		
+		// low byte index
+		data2send[18] = alphabet[2];
+		data2send[19] = alphabet[3];
+	} 
+	// data 1 byte only - 하한
+	else {
+		fullByte = @[W:HW61125];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[18] = alphabet[0];
+		data2send[19] = alphabet[1];
+	}
+	// data more than 1 byte - 상한
+	if(@[W:HW61126] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW61126]);
+		lowByte= LOBYTE(@[W:HW61126]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[12] = alphabet[0];
+		data2send[13] = alphabet[1];
+		
+		// low byte index
+		data2send[14] = alphabet[2];
+		data2send[15] = alphabet[3];
+		
+	} 
+	// data 1 byte only - 상한 
+	else {
+		fullByte = @[W:HW61126];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[14] = alphabet[0];
+		data2send[15] = alphabet[1];
+	}
+} 
+// button 3 pressed
+else if(@[X:HW63100.4] == 1) {
+	// data address for button 3
+	data2send[11] = 0x33; 
+	// data more than 1 byte - 하한
+	if(@[W:HW61135] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW61135]);
+		lowByte= LOBYTE(@[W:HW61135]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[16] = alphabet[0];
+		data2send[17] = alphabet[1];
+		
+		// low byte index
+		data2send[18] = alphabet[2];
+		data2send[19] = alphabet[3];
+	} 
+	// data 1 byte only - 하한
+	else {
+		fullByte = @[W:HW61135];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[18] = alphabet[0];
+		data2send[19] = alphabet[1];
+	}
+	// data more than 1 byte - 상한
+	if(@[W:HW61136] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW61136]);
+		lowByte= LOBYTE(@[W:HW61136]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[12] = alphabet[0];
+		data2send[13] = alphabet[1];
+		
+		// low byte index
+		data2send[14] = alphabet[2];
+		data2send[15] = alphabet[3];
+		
+	} 
+	// data 1 byte only - 상한 
+	else {
+		fullByte = @[W:HW61136];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[14] = alphabet[0];
+		data2send[15] = alphabet[1];
+	} 
+}
+// button 4 pressed 
+else if(@[X:HW64100.4] == 1) {
+	// data address for button 4
+	data2send[11] = 0x34; 
+	// data more than 1 byte - 하한
+	if(@[W:HW61145] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW61145]);
+		lowByte= LOBYTE(@[W:HW61145]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[16] = alphabet[0];
+		data2send[17] = alphabet[1];
+		
+		// low byte index
+		data2send[18] = alphabet[2];
+		data2send[19] = alphabet[3];
+	} 
+	// data 1 byte only - 하한
+	else {
+		fullByte = @[W:HW61145];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[18] = alphabet[0];
+		data2send[19] = alphabet[1];
+	}
+	// data more than 1 byte - 상한
+	if(@[W:HW61146] > 0xff){
+		// get high & low byte
+		highByte = HIBYTE(@[W:HW61146]);
+		lowByte= LOBYTE(@[W:HW61146]);
+		
+		// transform high byte to 2 ascii data
+		HEX2ASCII(((highByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((highByte & 0x0f) , &alphabet[1], 1);
+		
+		// transform low byte to 2 ascii data
+		HEX2ASCII(((lowByte & 0xff) >> 4) , &alphabet[2], 1);
+		HEX2ASCII((lowByte & 0x0f) , &alphabet[3], 1);
+		
+		// high byte index
+		data2send[12] = alphabet[0];
+		data2send[13] = alphabet[1];
+		
+		// low byte index
+		data2send[14] = alphabet[2];
+		data2send[15] = alphabet[3];
+		
+	} 
+	// data 1 byte only - 상한 
+	else {
+		fullByte = @[W:HW61146];
+		
+		// transform 1 byte to 2 ascii data
+		HEX2ASCII(((fullByte & 0xff) >> 4) , &alphabet[0], 1);
+		HEX2ASCII((fullByte & 0x0f) , &alphabet[1], 1);
+		
+		// full byte index = low byte index
+		// high byte index value = default value = 0x30 0x30
+		data2send[14] = alphabet[0];
+		data2send[15] = alphabet[1];
+	} 
+}
+// reset button pressed
+else if(@[X:HW65100.0] == 1) {
+	// data address for reset button
+	data2send[11] = 0x35; 
+}
+// if nothing pressed - default
+else {
+	@[W:HW62347] = 1;
+	data2send[11] = 0x30; 
+	
+	// send message 2
+	if(@[X:HW65243.0] == 1){
+		data2send[11] = 0x36;
+	}
+}
+
+//---------------------------- 
+//	resend timer
+//	send requesting page data message
+//	after sending new value
+//---------------------------- 	
+
+// timer start
+if(@[W:HW62345] == 2){
+	// if init timer value and new timer value is not equal
+	if(@[X:HW19812.3] != @[X:HS0000.4]){
+		// timer counter
+		@[W:HW62348]++;
+		// set new timer value 
+		@[X:HW19812.3] = @[X:HS0000.4];
+	}
+	// reset after 150ms
+	if(@[W:HW62348] > 4){
+		// transmit flag
+		@[W:HW62345] = 0;
+		// send default page message
+		@[W:HW62347] = 1;
+		// reset timer counter
+		@[W:HW62348] = 0;
+		// send default page command
+		data2send[11] = 0x30; 
+		@[X:HW65243.0] = 0;
+	}
+}
+//---------------------------- 
+
+//---------------------------- 
+//	transmit mode
+//---------------------------- 
+
+// when transmit ready
+if(@[W:HW62345] == 0){
+	// transmit data
+	size232 = WriteToIO(0,&data2send[0], 27);
+	
+	// if button is pressed
+	if(@[W:HW62347] == 0) {
+		// initialize timer value
+		@[X:HW19812.3] = @[X:HS0000.4];
+		// prevent entering receive mode
+		@[W:HW62345] = 2;
+	} else {
+		// ready to receive
+		@[W:HW62345] = 1;
+			
+		// reset buttons
+		// button 1
+		if(@[X:HW61100.4] == 1){
+			@[X:HW61100.4] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 17 - "save complete"
+			@[W:HW33333] = 17;
+			// change'이전 설정 값' to '현재 설정 값' - 하한
+			@[W:HW61110] = @[W:HW61115];
+			// change'이전 설정 값' to '현재 설정 값' - 상한
+			@[W:HW61111] = @[W:HW61116];
+		}	
+		// button 2
+		if(@[X:HW62100.4] == 1){
+			@[X:HW62100.4] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 17 - "save complete"
+			@[W:HW33333] = 17;
+			// change'이전 설정 값' to '현재 설정 값' - 하한
+			@[W:HW61120] = @[W:HW61125];
+			// change'이전 설정 값' to '현재 설정 값' - 상한
+			@[W:HW61121] = @[W:HW61126];
+		}
+		// button 3
+		if(@[X:HW63100.4] == 1){
+			@[X:HW63100.4] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 17 - "save complete"
+			@[W:HW33333] = 17;
+			// change'이전 설정 값' to '현재 설정 값' - 하한
+			@[W:HW61130] = @[W:HW61135];
+			// change'이전 설정 값' to '현재 설정 값' - 상한
+			@[W:HW61131] = @[W:HW61136];
+		}
+		// button 4
+		if(@[X:HW64100.4] == 1){
+			@[X:HW64100.4] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 17 - "save complete"
+			@[W:HW33333] = 17;
+			// change'이전 설정 값' to '현재 설정 값' - 하한
+			@[W:HW61140] = @[W:HW61145];
+			// change'이전 설정 값' to '현재 설정 값' - 상한
+			@[W:HW61141] = @[W:HW61146];
+		}
+		// reset button
+		if(@[X:HW65100.0] == 1){
+			@[X:HW65100.0] = 0;
+			// set '현재 설정 값' to '이전 설정 값'
+			@[X:HW61100.5] = 0;
+			@[X:HW62100.5] = 0;
+			@[X:HW63100.5] = 0;
+			@[X:HW64100.5] = 0;
+			// pop up 5 on
+			@[X:HW39111.0] = 1;
+			// string message 18 - "reset complete"
+			@[W:HW33333] = 18;
+		}
+	}
+}
+
+//---------------------------- 
+//	analyze received data
+//	hmi <-> ecu data length is always 27 bytes
+//---------------------------- 
+
+// when first byte is 0x65, which is sof	
+if(global_Response[0] == 0x65){
+	// when last byte is 0x0d, which is eof
+	if(global_Response[26] == 0x0d){
+		// receive complete ready to send
+		@[W:HW62345] = 0;
+		// timeout reset
+		@[W:HW62344] = 0;
+		
+		// message 1/2 converter
+		@[X:HW65243.0] = !@[X:HW65243.0];
+		
+		// connection check reset
+		@[W:HW19811] = 0;
+		
+		// reset button entering flag
+		@[W:HW62347] = 0;
+
+		
+		// get data only
+		for(global_rcv_cnt = 10; global_rcv_cnt < 26; global_rcv_cnt++){
+			// if alphabet data
+			if( global_Response[global_rcv_cnt] > 0x60){
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x57;
+			}
+			// if numeric data   
+			else {
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x30;
+			}
+		}
+		// received address
+		global_addr = (global_buffer[0] << 4) + global_buffer[1];
+		
+		// oil temp page data 1 / page 6 / 하한 값
+		////------------------------------ a ------------------------------////
+		if(global_addr == 0x5a) {					
+			// 오일탱크 온도							
+			@[W:HW61110] = (global_buffer[2] << 4) + global_buffer[3];
+			// 1번 쿨러 온도
+			@[W:HW61120] = (global_buffer[4] << 4) + global_buffer[5];
+			// 2번 쿨러 온도
+			@[W:HW61130] = (global_buffer[6] << 4) + global_buffer[7];
+			// 3번 쿨러 온도
+			@[W:HW61140] = (global_buffer[8] << 4) + global_buffer[9];
+			
+			//---------------------------- 
+			//	set '현재 설정 값' to '이전 설정 값'
+			//---------------------------- 
+			if(@[X:HW61100.5] == 0) {
+				@[W:HW61115] = @[W:HW61110];
+			}
+			if(@[X:HW62100.5] == 0) {
+				@[W:HW61125] = @[W:HW61120];
+			}
+			if(@[X:HW63100.5] == 0) {
+				@[W:HW61135] = @[W:HW61130];
+			}
+			if(@[X:HW64100.5] == 0) {
+				@[W:HW61145] = @[W:HW61140];
+			}
+			//---------------------------- 
+		}
+		
+		// oil temp page data 2 / page 6 / 상한 값
+		////------------------------------ b ------------------------------////
+		else if(global_addr == 0x5b) {		
+			int temp1 = 0;
+			int temp2 = 0;				
+			// 오일탱크 온도						
+			@[W:HW61111] = (global_buffer[2] << 4) + global_buffer[3];
+			// 1번 쿨러 온도
+			@[W:HW61121] = (global_buffer[4] << 4) + global_buffer[5];
+			// 2번 쿨러 온도
+			@[W:HW61131] = (global_buffer[6] << 4) + global_buffer[7];
+			// 3번 쿨러 온도
+			@[W:HW61141] = (global_buffer[8] << 4) + global_buffer[9];
+				
+			//---------------------------- 
+			//	set '현재 설정 값' to '이전 설정 값'
+			//---------------------------- 
+			if(@[X:HW61100.5] == 0) {
+				@[W:HW61116] = @[W:HW61111];
+			}
+			if(@[X:HW62100.5] == 0) {
+				@[W:HW61126] = @[W:HW61121];
+			}
+			if(@[X:HW63100.5] == 0) {
+				@[W:HW61136] = @[W:HW61131];
+			}
+			if(@[X:HW64100.5] == 0) {
+				@[W:HW61146] = @[W:HW61141];
+			}
+			//---------------------------- 
+		}
+	}
+}
+ERROR:
+{
+
+}

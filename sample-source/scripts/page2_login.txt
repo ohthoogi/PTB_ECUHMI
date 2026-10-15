@@ -1,0 +1,147 @@
+//---------------------------- 
+//	page 2 login
+//	특수전학교 1호기
+//---------------------------- 
+
+//---------------------------- 
+//	variables
+//---------------------------- 
+
+// input id
+char id[11];
+// input password
+char pw[11];
+// user id 1
+// char userid[6] = "ROKMC";	// 사용안함
+// user id 2
+char userid2[6] = "SWSE";
+// user common password
+char userpw[5] = "2900";
+// admin id
+char adminid[7] = "HANGIS";
+// admin password
+char adminpw[5] = "9779";
+
+//---------------------------- 
+
+Memset ( &id[0], 0, 10 );
+Memset ( &pw[0], 0, 10 );
+
+//---------------------------- 
+//	get input data
+//---------------------------- 
+GetStrData ( @[W:HW20000], 10,  &id );
+GetStrData ( @[W:HW20020], 10,  &pw );
+//---------------------------- 
+
+//---------------------------- 
+//	use input data
+//---------------------------- 
+
+// login button pressed
+if(@[X:HW21110.0] == 1){
+	// input id == user id 1
+	/*if( Strcmp(&userid, &id) == 0 ){
+		// input password == user common password
+		if( Strcmp(&userpw, &pw) == 0 ){
+			// reset input id & password
+			// reset variable
+			Memset ( &id[0], 0, 10 );
+			Memset ( &pw[0], 0, 10 );
+			// reset device address
+			@[W:HW20000] = 0;
+			@[W:HW20020] = 0;
+			// login succeed flag
+			@[X:HW21100.4] = 1;
+		} 
+		// input password != user common password
+		else {
+			// message string 1 - "wrong password"
+			@[W:HW21119] = 1;
+			// pop up 3 on
+			@[X:HW21100.3] = 1;
+			// reset input password
+			Memset ( &pw[0], 0, 10 );
+		}
+	} 
+	// input id == user id 2
+	else */
+	if( Strcmp(&userid2, &id) == 0 ){
+		// input password == user common password
+		if( Strcmp(&userpw, &pw) == 0 ){
+			// reset input id & password
+			// reset variable
+			Memset ( &id[0], 0, 10 );
+			Memset ( &pw[0], 0, 10 );
+			// reset device address
+			@[W:HW20000] = 0;
+			@[W:HW20020] = 0;
+			// login succeed flag
+			@[X:HW21100.4] = 1;
+		} 
+		// input password != user common password
+		else {
+			// message string 1 - "wrong password"
+			@[W:HW21119] = 1;
+			// pop up 3 on
+			@[X:HW21100.3] = 1;
+			// reset input password
+			Memset ( &pw[0], 0, 10 );
+		}
+	} 
+	// input id == admin id
+	else if( Strcmp(&adminid, &id) == 0 ){
+		// input password == admin password
+		if( Strcmp(&adminpw, &pw) == 0 ){
+			// reset input id & password
+			// reset variable
+			Memset ( &id[0], 0, 10 );
+			Memset ( &pw[0], 0, 10 );
+			// reset device address
+			@[W:HW20000] = 0;
+			@[W:HW20020] = 0;
+			// login succeed flag
+			@[X:HW21100.4] = 1;
+			// logged in as admin
+			@[X:HW21100.5] = 1;
+		} 
+		// input password != admin password
+		else {
+			// message string 1 - "wrong password"
+			@[W:HW21119] = 1;
+			// pop up 3 on
+			@[X:HW21100.3] = 1;
+			// reset input password
+			Memset ( &pw[0], 0, 10 );
+		}
+	} 
+	// input id != user id || admin id
+	else {
+		// message string 0 - "wrong id"
+		@[W:HW21119] = 0;
+		// pop up 3 on
+		@[X:HW21100.3] = 1;
+		// reset input id & password
+		Memset ( &id[0], 0, 10 );
+		Memset ( &pw[0], 0, 10 );
+	}
+	// reset loing button
+	@[X:HW21110.0] = 0;
+}
+//---------------------------- 
+
+//---------------------------- 
+//	login succeed
+//---------------------------- 
+
+// login succeed flag on && no pop up
+if(@[X:HW21100.4] == 1 && @[X:HW21100.3] == 0){
+	// go to screen 1
+	ChangeBaseScreen(1);
+}
+//---------------------------- 
+
+ERROR:
+{
+
+}

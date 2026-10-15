@@ -1,0 +1,44 @@
+/*
+int temp3;
+int temp4;
+
+if(@[X:HW13110.0] == 1) {
+	temp3 = 90;
+} else if(@[X:HW13110.1] == 1) {
+	temp3 = 100;
+} else if(@[X:HW13110.2] == 1) {
+	temp3 = 101;
+} else if(@[X:HW13110.3] == 1) {
+	temp3 = 211;
+} else if(@[X:HW13110.4] == 1) {
+	temp3 = 3110;
+} else if(@[X:HW13110.5] == 1) {
+	temp3 = 3250;
+}
+
+if(temp3 <101){
+	// do not display negative value
+	@[W:HW13010] = 0;
+} else {
+	// graph value should be equal to numeric value divide the value by 10
+	if(temp3 > 3100) {
+		temp4 = temp3-3100;
+		temp4 *= 3.3;
+		@[W:HW13010] = ((3000+temp4)/10);
+	} else {
+		@[W:HW13010] = ((temp3-100) / 10);
+	}
+}
+@[W:HW12010] = (temp3-100);
+
+*/
+if(@[W:HW31126] == 0){
+	@[W:HW31125] = 290;
+	@[W:HW31126] = 1;
+}
+
+
+ERROR:
+{
+
+}

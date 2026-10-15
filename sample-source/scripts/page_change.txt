@@ -1,0 +1,102 @@
+//---------------------------- 
+//	clear page change buttons when move to other pages
+//	and turn on active page button color
+//---------------------------- 
+
+char pageNum = @[W:HS0010];
+
+if(pageNum != @[W:HW65432]){
+	@[X:HW39111.0] = 0;
+}
+
+@[W:HW65432] = pageNum;
+
+
+
+if(pageNum == 1){
+	@[X:HW11111.0] = 1;
+	@[X:HW11111.1] = 0;
+	@[X:HW11111.2] = 0;
+	@[X:HW11111.3] = 0;
+	@[X:HW11111.4] = 0;
+	@[X:HW11111.5] = 0;
+	
+	// message send reset
+	@[W:HW32345] = 0;
+	@[W:HW42345] = 0;
+	@[W:HW52345] = 0;
+	@[W:HW62345] = 0;
+	
+} else if(pageNum == 2){
+	@[X:HW11111.0] = 0;
+	@[X:HW11111.1] = 1;
+	@[X:HW11111.2] = 0;
+	@[X:HW11111.3] = 0;
+	@[X:HW11111.4] = 0;
+	@[X:HW11111.5] = 0;
+	
+	// message send reset
+	@[W:HW12345] = 0;
+	@[W:HW32345] = 0;
+	@[W:HW42345] = 0;
+	@[W:HW52345] = 0;
+	@[W:HW62345] = 0;
+} else if(pageNum == 3){
+	@[X:HW11111.0] = 0;
+	@[X:HW11111.1] = 0;
+	@[X:HW11111.2] = 1;
+	@[X:HW11111.3] = 0;
+	@[X:HW11111.4] = 0;
+	@[X:HW11111.5] = 0;
+	
+	// message send reset
+	@[W:HW12345] = 0;
+	@[W:HW42345] = 0;
+	@[W:HW52345] = 0;
+	@[W:HW62345] = 0;
+} else if(pageNum == 4){
+	@[X:HW11111.0] = 0;
+	@[X:HW11111.1] = 0;
+	@[X:HW11111.2] = 0;
+	@[X:HW11111.3] = 1;
+	@[X:HW11111.4] = 0;
+	@[X:HW11111.5] = 0;
+	
+	// message send reset
+	@[W:HW12345] = 0;
+	@[W:HW32345] = 0;
+	@[W:HW52345] = 0;
+	@[W:HW62345] = 0;
+} else if(pageNum == 5){
+	@[X:HW11111.0] = 0;
+	@[X:HW11111.1] = 0;
+	@[X:HW11111.2] = 0;
+	@[X:HW11111.3] = 0;
+	@[X:HW11111.4] = 1;
+	@[X:HW11111.5] = 0;
+	
+	// message send reset
+	@[W:HW12345] = 0;
+	@[W:HW32345] = 0;
+	@[W:HW42345] = 0;
+	@[W:HW62345] = 0;
+} else if(pageNum == 6){
+	@[X:HW11111.0] = 0;
+	@[X:HW11111.1] = 0;
+	@[X:HW11111.2] = 0;
+	@[X:HW11111.3] = 0;
+	@[X:HW11111.4] = 0;
+	@[X:HW11111.5] = 1;
+	
+	// message send reset
+	@[W:HW12345] = 0;
+	@[W:HW32345] = 0;
+	@[W:HW42345] = 0;
+	@[W:HW52345] = 0;
+}
+
+
+ERROR:
+{
+
+}

@@ -1,0 +1,549 @@
+//---------------------------- 
+//	page 1 data tx and rx
+//
+//	rx data
+//	loadcell test start 1~5
+//	page 8 communication check
+//
+//	tx data
+//	page8 communication response
+//	test 1~5 start
+//	test 1~5 end
+//
+//---------------------------- 
+
+// rx buffer
+char global_Response[28];
+// ecu data buffer
+char global_buffer[17];
+
+// received data size
+int global_ReadSize;
+
+// ecu data buffer counter
+int global_buffercnt=0;
+// to get display data only from whole rx data
+int global_rcv_cnt=0;
+// ecu data address
+char global_addr=0;
+
+// tx data buffer
+char data2send[28];
+// tx data size
+int size232=0;
+
+//---------------------------- 
+// 	const data
+//---------------------------- 
+
+// cmd
+data2send[0] = 0x65;
+// id
+data2send[1] = 0x30;
+data2send[2] = 0x63;
+
+data2send[3] = 0x31;
+data2send[4] = 0x32;
+
+data2send[5] = 0x33;
+data2send[6] = 0x34;
+
+data2send[7] = 0x31;
+data2send[8] = 0x30;
+// dlc
+data2send[9] = 0x38;
+
+// byte1 // addr
+// page 8
+data2send[10] = 0x39;
+data2send[11] = 0x30;
+
+// byte 2 
+data2send[12] = 0x33;
+data2send[13] = 0x30;
+// byte 3 
+data2send[14] = 0x30;
+data2send[15] = 0x30;
+// byte 4 
+data2send[16] = 0x30;
+data2send[17] = 0x30;
+// byte 5 
+data2send[18] = 0x30;
+data2send[19] = 0x30;
+// byte 6
+data2send[20] = 0x30;
+data2send[21] = 0x30;
+// byte7
+data2send[22] = 0x30;
+data2send[23] = 0x30;
+// byte 8 
+data2send[24] = 0x30;
+data2send[25] = 0x30;
+
+// end byte <cr>
+data2send[26] = 0x0d;
+
+//---------------------------- 
+
+
+
+int temp;
+int highByte;
+int lowByte;
+char alphabet[5];
+char numpad[5];
+
+if(@[X:HW01234.0] == 1){
+	data2send[13] = 0x31;
+	data2send[14] = 0x33;
+	if(@[W:HW01235] == 1){
+		data2send[15] = 0x31;
+	}
+} else if(@[X:HW01234.1] == 1){
+	data2send[13] = 0x32;
+	data2send[14] = 0x33;
+	if(@[W:HW01236] == 1){
+		data2send[15] = 0x31;
+	}
+} else if(@[X:HW01234.2] == 1){
+	data2send[13] = 0x33;
+	data2send[14] = 0x33;
+	if(@[W:HW01237] == 1){
+		data2send[15] = 0x31;
+	}
+} else if(@[X:HW01234.3] == 1){
+	data2send[13] = 0x34;
+	data2send[14] = 0x33;
+	if(@[W:HW01238] == 1){
+		data2send[15] = 0x31;
+	}
+} else if(@[X:HW01234.4] == 1){
+	data2send[13] = 0x35;
+	data2send[14] = 0x33;
+	if(@[W:HW01239] == 1){
+		data2send[15] = 0x31;
+	}
+} else if(@[X:HW01234.5] == 1){
+	data2send[13] = 0x61;
+	data2send[14] = 0x33;
+	if(@[W:HW01240] == 1){
+		data2send[15] = 0x31;
+	} 
+	//else if(@[W:HW01240] == 2){
+	//	data2send[15] = 0x32;
+	//}
+} else if(@[X:HW01234.6] == 1){
+	data2send[13] = 0x62;
+	data2send[14] = 0x33;
+	if(@[W:HW01241] == 1){
+		data2send[15] = 0x31;
+	} 
+} else if(@[X:HW01234.7] == 1){
+	data2send[13] = 0x63;
+	data2send[14] = 0x33;
+	if(@[W:HW01242] == 1){
+		data2send[15] = 0x31;
+	} 
+}
+
+//---------------------------- 
+// receive mode
+//---------------------------- 
+SetStrData ( @[W:HW09000], 0, &data2send );
+// when receive ready
+if(@[W:HW02345] == 1) {
+	// receive function
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// if receive data is not whole data, receive again
+	if(global_ReadSize < 27 && global_ReadSize > 0) {	
+		global_ReadSize = ReadFromIO(0,&global_Response[global_ReadSize], 27-global_ReadSize );
+	}	
+	// timeout checker - 1sec
+	@[W:HW02344]++;
+	// timeout
+	if(@[W:HW02344] > 8) {
+		// send message
+		@[W:HW02345] = 0;
+		// checker reset
+		@[W:HW02344] = 0;
+	}
+}
+//---------------------------- 
+
+//---------------------------- 
+//	transmit mode
+//---------------------------- 
+
+// when transmit ready
+if(@[W:HW02345] == 0 && @[W:HW02355] == 0) {
+	// transmit data
+	size232 = WriteToIO(0,&data2send[0], 27);
+	// reset tx buffer
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// total send counter
+	// ready to receive
+	@[W:HW02345] = 1;
+	// delay resend start
+	@[W:HW02355] = 1;
+	/*
+	// debug 260821
+	@[W:HW01270] = ((data2send[10] - 0x30) << 4) + (data2send[11] - 0x30);
+	if(@[X:HW01234.5] == 1 || @[X:HW01234.6] == 1 ||@[X:HW01234.7] == 1){
+		@[W:HW01271] = ((data2send[12] - 0x30) << 4) + (data2send[13] - 0x57);
+	} else {
+		@[W:HW01271] = ((data2send[12] - 0x30) << 4) + (data2send[13] - 0x30);
+	}
+	@[W:HW01272] = ((data2send[14] - 0x30) << 4) + (data2send[15] - 0x30);
+	@[W:HW01273] = ((data2send[16] - 0x30) << 4) + (data2send[17] - 0x30);
+	@[W:HW01274] = ((data2send[18] - 0x30) << 4) + (data2send[19] - 0x30);
+	@[W:HW01275] = ((data2send[20] - 0x30) << 4) + (data2send[21] - 0x30);
+	@[W:HW01276] = ((data2send[22] - 0x30) << 4) + (data2send[23] - 0x30);
+	@[W:HW01277] = ((data2send[24] - 0x30) << 4) + (data2send[25] - 0x30);
+	*/
+} 
+//---------------------------- 
+
+//---------------------------- 
+//	delay resend message
+//---------------------------- 
+if(@[W:HW02355] > 0){
+	@[W:HW02355]++;
+}
+if(@[W:HW02355] > 10 ){
+	@[W:HW02355] = 0;
+}
+//---------------------------- 
+//---------------------------- 
+//	analyze received data
+//	hmi <-> ecu data length is always 27 bytes
+//---------------------------- 
+
+// when first byte is 0x65, which is sof	
+if(global_Response[0] == 0x65){
+	// when last byte is 0x0d, which is eof
+	if(global_Response[26] == 0x0d){
+		// receive complete ready to send
+		@[W:HW02345] = 0;
+		// timeout reset
+		@[W:HW02344] = 0;
+		
+		//----------------
+		// connection check reset
+		@[W:HW19811] = 0;
+		
+		// get data only
+		for(global_rcv_cnt = 10; global_rcv_cnt < 26; global_rcv_cnt++){
+			// if alphabet data
+			if( global_Response[global_rcv_cnt] > 0x60){
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x57;
+			}
+			// if numeric data 
+			else {
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x30;
+			}
+		}
+		// received address
+		global_addr = (global_buffer[0] << 4) + global_buffer[1];
+		
+		/*
+		// debug 260821
+		@[W:HW01280] = (global_buffer[0] << 4) + global_buffer[1];
+		@[W:HW01281] = (global_buffer[2] << 4) + global_buffer[3];
+		@[W:HW01282] = (global_buffer[4] << 4) + global_buffer[5];
+		@[W:HW01283] = (global_buffer[6] << 4) + global_buffer[7];
+		@[W:HW01284] = (global_buffer[8] << 4) + global_buffer[9];
+		@[W:HW01285] = (global_buffer[10] << 4) + global_buffer[11];
+		@[W:HW01286] = (global_buffer[12] << 4) + global_buffer[13];
+		@[W:HW01287] = (global_buffer[14] << 4) + global_buffer[15];
+		*/
+		////------------------------------ a ------------------------------////
+		if(global_addr == 0x9a) {	// main page data
+			int temp1 = 0;
+			int temp2 = 0;
+			
+			int tempAddr = 0;
+			
+			// addr
+			tempAddr = (global_buffer[2] << 4) + global_buffer[3];
+			
+			// test 1
+			if(tempAddr == 0x31){
+				int tempValue = 0;
+				tempValue = (global_buffer[4] << 4) + global_buffer[5];
+				
+				if(tempValue == 0x30){
+					// set text to ing
+					@[W:HW01235] = 1;
+					// show dummy btn
+					@[X:HW01233.0] = 1;
+					@[X:HW01233.1] = 1;
+					@[X:HW01233.2] = 1;
+					@[X:HW01233.3] = 1;
+					@[X:HW01233.4] = 1;
+					@[X:HW01233.5] = 1;
+					@[X:HW01233.6] = 1;
+					@[X:HW01233.7] = 1;
+					
+				} else if(tempValue == 0x31){
+					// set text to complete
+					@[W:HW01235] = 2;
+					// off dummy btn
+					@[X:HW01233.0] = 0;
+					@[X:HW01233.1] = 0;
+					@[X:HW01233.2] = 0;
+					@[X:HW01233.3] = 0;
+					@[X:HW01233.4] = 0;
+					@[X:HW01233.5] = 0;
+					@[X:HW01233.6] = 0;
+					@[X:HW01233.7] = 0;
+					// off trigger btn
+					@[X:HW01234.0] = 0;
+				}
+			}
+			// test 2
+			if(tempAddr == 0x32){
+				int tempValue = 0;
+				tempValue = (global_buffer[4] << 4) + global_buffer[5];
+				
+				if(tempValue == 0x30){
+					// set text to ing
+					@[W:HW01236] = 1;
+					// show dummy btn
+					@[X:HW01233.0] = 1;
+					@[X:HW01233.1] = 1;
+					@[X:HW01233.2] = 1;
+					@[X:HW01233.3] = 1;
+					@[X:HW01233.4] = 1;
+					@[X:HW01233.5] = 1;
+					@[X:HW01233.6] = 1;
+					@[X:HW01233.7] = 1;
+					
+				} else if(tempValue == 0x31){
+					// set text to complete
+					@[W:HW01236] = 2;
+					// off dummy btn
+					@[X:HW01233.0] = 0;
+					@[X:HW01233.1] = 0;
+					@[X:HW01233.2] = 0;
+					@[X:HW01233.3] = 0;
+					@[X:HW01233.4] = 0;
+					@[X:HW01233.5] = 0;
+					@[X:HW01233.6] = 0;
+					@[X:HW01233.7] = 0;
+					// off trigger btn
+					@[X:HW01234.1] = 0;
+				}
+			}
+			// test 3
+			if(tempAddr == 0x33){
+				int tempValue = 0;
+				tempValue = (global_buffer[4] << 4) + global_buffer[5];
+				
+				if(tempValue == 0x30){
+					// set text to ing
+					@[W:HW01237] = 1;
+					// show dummy btn
+					@[X:HW01233.0] = 1;
+					@[X:HW01233.1] = 1;
+					@[X:HW01233.2] = 1;
+					@[X:HW01233.3] = 1;
+					@[X:HW01233.4] = 1;
+					@[X:HW01233.5] = 1;
+					@[X:HW01233.6] = 1;
+					@[X:HW01233.7] = 1;
+					
+				} else if(tempValue == 0x31){
+					// set text to complete
+					@[W:HW01237] = 2;
+					// off dummy btn
+					@[X:HW01233.0] = 0;
+					@[X:HW01233.1] = 0;
+					@[X:HW01233.2] = 0;
+					@[X:HW01233.3] = 0;
+					@[X:HW01233.4] = 0;
+					@[X:HW01233.5] = 0;
+					@[X:HW01233.6] = 0;
+					@[X:HW01233.7] = 0;
+					// off trigger btn
+					@[X:HW01234.2] = 0;
+				}
+			}
+			// test 4
+			if(tempAddr == 0x34){
+				int tempValue = 0;
+				tempValue = (global_buffer[4] << 4) + global_buffer[5];
+				
+				if(tempValue == 0x30){
+					// set text to ing
+					@[W:HW01238] = 1;
+					// show dummy btn
+					@[X:HW01233.0] = 1;
+					@[X:HW01233.1] = 1;
+					@[X:HW01233.2] = 1;
+					@[X:HW01233.3] = 1;
+					@[X:HW01233.4] = 1;
+					@[X:HW01233.5] = 1;
+					@[X:HW01233.6] = 1;
+					@[X:HW01233.7] = 1;
+					
+				} else if(tempValue == 0x31){
+					// set text to complete
+					@[W:HW01238] = 2;
+					// off dummy btn
+					@[X:HW01233.0] = 0;
+					@[X:HW01233.1] = 0;
+					@[X:HW01233.2] = 0;
+					@[X:HW01233.3] = 0;
+					@[X:HW01233.4] = 0;
+					@[X:HW01233.5] = 0;
+					@[X:HW01233.6] = 0;
+					@[X:HW01233.7] = 0;
+					// off trigger btn
+					@[X:HW01234.3] = 0;
+				}
+			}
+			// test 5
+			if(tempAddr == 0x35){
+				int tempValue = 0;
+				tempValue = (global_buffer[4] << 4) + global_buffer[5];
+				
+				if(tempValue == 0x30){
+					// set text to ing
+					@[W:HW01239] = 1;
+					// show dummy btn
+					@[X:HW01233.0] = 1;
+					@[X:HW01233.1] = 1;
+					@[X:HW01233.2] = 1;
+					@[X:HW01233.3] = 1;
+					@[X:HW01233.4] = 1;
+					@[X:HW01233.5] = 1;
+					@[X:HW01233.6] = 1;
+					@[X:HW01233.7] = 1;
+					
+				} else if(tempValue == 0x31){
+					// set text to complete
+					@[W:HW01239] = 2;
+					// off dummy btn
+					@[X:HW01233.0] = 0;
+					@[X:HW01233.1] = 0;
+					@[X:HW01233.2] = 0;
+					@[X:HW01233.3] = 0;
+					@[X:HW01233.4] = 0;
+					@[X:HW01233.5] = 0;
+					@[X:HW01233.6] = 0;
+					@[X:HW01233.7] = 0;
+					// off trigger btn
+					@[X:HW01234.4] = 0;
+				}
+			}
+			// test result save
+			if(tempAddr == 0x3a){
+				int tempValue = 0;
+				tempValue = (global_buffer[4] << 4) + global_buffer[5];
+				
+				if(tempValue == 0x30){
+					// set text to ing
+					@[W:HW01240] = 1;
+					// show dummy btn
+					@[X:HW01233.0] = 1;
+					@[X:HW01233.1] = 1;
+					@[X:HW01233.2] = 1;
+					@[X:HW01233.3] = 1;
+					@[X:HW01233.4] = 1;
+					@[X:HW01233.5] = 1;
+					@[X:HW01233.6] = 1;
+					@[X:HW01233.7] = 1;
+					
+				} else if(tempValue == 0x31){
+					// set text to complete
+					@[W:HW01240] = 2;
+					// off dummy btn
+					@[X:HW01233.0] = 0;
+					@[X:HW01233.1] = 0;
+					@[X:HW01233.2] = 0;
+					@[X:HW01233.3] = 0;
+					@[X:HW01233.4] = 0;
+					@[X:HW01233.5] = 0;
+					@[X:HW01233.6] = 0;
+					@[X:HW01233.7] = 0;
+					// off trigger btn
+					@[X:HW01234.5] = 0;
+				}
+			}
+			// reset memory
+			if(tempAddr == 0x3b){
+				int tempValue = 0;
+				tempValue = (global_buffer[4] << 4) + global_buffer[5];
+				
+				if(tempValue == 0x30){
+					// set text to ing
+					@[W:HW01241] = 1;
+					// show dummy btn
+					@[X:HW01233.0] = 1;
+					@[X:HW01233.1] = 1;
+					@[X:HW01233.2] = 1;
+					@[X:HW01233.3] = 1;
+					@[X:HW01233.4] = 1;
+					@[X:HW01233.5] = 1;
+					@[X:HW01233.6] = 1;
+					@[X:HW01233.7] = 1;
+					
+				} else if(tempValue == 0x31){
+					// set text to complete
+					@[W:HW01241] = 2;
+					// off dummy btn
+					@[X:HW01233.0] = 0;
+					@[X:HW01233.1] = 0;
+					@[X:HW01233.2] = 0;
+					@[X:HW01233.3] = 0;
+					@[X:HW01233.4] = 0;
+					@[X:HW01233.5] = 0;
+					@[X:HW01233.6] = 0;
+					@[X:HW01233.7] = 0;
+					// off trigger btn
+					@[X:HW01234.6] = 0;
+				}
+			}
+			// reset setting
+			if(tempAddr == 0x3c){
+				int tempValue = 0;
+				tempValue = (global_buffer[4] << 4) + global_buffer[5];
+				
+				if(tempValue == 0x30){
+					// set text to ing
+					@[W:HW01242] = 1;
+					// show dummy btn
+					@[X:HW01233.0] = 1;
+					@[X:HW01233.1] = 1;
+					@[X:HW01233.2] = 1;
+					@[X:HW01233.3] = 1;
+					@[X:HW01233.4] = 1;
+					@[X:HW01233.5] = 1;
+					@[X:HW01233.6] = 1;
+					@[X:HW01233.7] = 1;
+					
+				} else if(tempValue == 0x31){
+					// set text to complete
+					@[W:HW01242] = 2;
+					// off dummy btn
+					@[X:HW01233.0] = 0;
+					@[X:HW01233.1] = 0;
+					@[X:HW01233.2] = 0;
+					@[X:HW01233.3] = 0;
+					@[X:HW01233.4] = 0;
+					@[X:HW01233.5] = 0;
+					@[X:HW01233.6] = 0;
+					@[X:HW01233.7] = 0;
+					// off trigger btn
+					@[X:HW01234.7] = 0;
+				}
+			}
+			
+		}
+	}
+}
+
+ERROR:
+{
+
+}

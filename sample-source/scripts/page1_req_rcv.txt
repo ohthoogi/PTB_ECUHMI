@@ -1,0 +1,498 @@
+//----------------------------
+//	admin user & test mode
+//	logged in as admin to enter test mode
+	if(@[W:HW00011] == 2){	// if maintenance mode
+		if(@[X:HW21100.5] == 1){	// if admin account
+			@[X:HW21100.6] = 1;	// show test mode btn
+		}
+	} else {
+		@[X:HW21100.6] = 0;
+	}
+
+//---------------------------- 
+// reset page8 results
+@[W:HW01235] = 0;
+@[W:HW01236] = 0;
+@[W:HW01237] = 0;
+@[W:HW01238] = 0;
+@[W:HW01239] = 0;
+@[W:HW01240] = 0;
+@[W:HW01241] = 0;
+@[W:HW01242] = 0;
+//---------------------------- 
+//	page 1 data tx and rx
+//
+//	rx data
+//	- 속도
+//	- 상승력
+//	- 고도
+//	- 브레이크
+//	- 솔 전류 a & b
+//	- 운용 모드
+//	- ecu version
+//
+//	tx data
+//	- page number
+//	- 오토 텐션 on & off
+//	- 고 출력 토크 on & off
+//	- 저장 윈치 프리 휠 구동 모드 - pop up 4
+//
+//---------------------------- 
+
+// rx buffer
+char global_Response[28];
+// ecu data buffer
+char global_buffer[17];
+
+// received data size
+int global_ReadSize;
+
+// ecu data buffer counter
+int global_buffercnt=0;
+// to get display data only from whole rx data
+int global_rcv_cnt=0;
+// ecu data address
+char global_addr=0;
+
+// tx data buffer
+char data2send[28];
+// tx data size
+int size232=0;
+
+//---------------------------- 
+// 	const data
+//---------------------------- 
+
+// cmd
+data2send[0] = 0x65;
+// id
+data2send[1] = 0x30;
+data2send[2] = 0x63;
+
+data2send[3] = 0x31;
+data2send[4] = 0x32;
+
+data2send[5] = 0x33;
+data2send[6] = 0x34;
+
+data2send[7] = 0x31;
+data2send[8] = 0x30;
+// dlc
+data2send[9] = 0x38;
+
+// byte1
+// page 1
+data2send[10] = 0x31;
+// message 1
+data2send[11] = 0x30;
+
+// byte2 - 고 토크 출력 off - default
+data2send[12] = 0x33;
+data2send[13] = 0x30;
+// byte3 - 오토 텐션 on - default
+data2send[14] = 0x33;
+data2send[15] = 0x30;
+// byte4 - 저장 윈치
+data2send[16] = 0x33;
+// 저장 윈치 default
+data2send[17] = 0x30;
+
+// empty space
+// byte5
+data2send[18] = 0x30;
+data2send[19] = 0x30;
+// byte6
+data2send[20] = 0x30;
+data2send[21] = 0x30;
+// byte7
+data2send[22] = 0x30;
+data2send[23] = 0x30;
+// byte8
+data2send[24] = 0x30;
+data2send[25] = 0x30;
+
+// end byte <cr>
+data2send[26] = 0x0d;
+
+//---------------------------- 
+
+// send message 2
+if(@[X:HW15243.0] == 1){
+	data2send[11] = 0x31;
+}
+// 고 토크 출력
+if(@[X:HW00002.0] == 1) {
+	// on
+	data2send[13] = 0x31;
+}
+// 오토 텐션
+if(@[X:HW00003.0] == 1) {
+	// off
+	data2send[15] = 0x31;
+}
+// 저장 윈치 start
+if(@[X:HW15000.1] == 1) {
+	// start
+	if(@[X:HW16000.0] == 1) {
+		data2send[17] = 0x31;
+		// lamp on
+		@[X:HW18000.0] = 1;
+	} 
+	// stop
+	if(@[X:HW17000.0] == 1) {
+		data2send[17] = 0x32;
+		@[X:HW16000.0] = 0;
+		// lamp off
+		@[X:HW18000.0] = 0;	
+	}
+}
+
+// 최초 1회 page4 brake off pressure request
+if(@[W:HW12360] == 0) {
+	// page4 요청
+	data2send[10] = 0x33; // page4
+	data2send[11] = 0x30; // page4 default/request msg
+	@[W:HW12360] = 1;
+}
+else {
+	// 기존 page1
+	data2send[10] = 0x31;
+}
+
+//---------------------------- 
+// receive mode
+//---------------------------- 
+
+// when receive ready
+if(@[W:HW12345] == 1) {
+	// receive function
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// if receive data is not whole data, receive again
+	if(global_ReadSize < 27 && global_ReadSize > 0) {	
+		global_ReadSize = ReadFromIO(0,&global_Response[global_ReadSize], 27-global_ReadSize );
+	}	
+	// timeout checker - 1sec
+	@[W:HW12344]++;
+	// timeout
+	if(@[W:HW12344] > 8) {
+		// send message
+		@[W:HW12345] = 0;
+		// checker reset
+		@[W:HW12344] = 0;
+		// send message 1
+		@[X:HW15243.0] = 0;
+	}
+}
+//---------------------------- 
+
+//---------------------------- 
+//	transmit mode
+//---------------------------- 
+
+// when transmit ready
+if(@[W:HW12345] == 0 && @[W:HW12355] == 0) {
+	// test code to check if message 1 & 2 is sent sequentially 
+	if(@[X:HW15243.0] == 0){
+		// message 1 counter
+		@[W:HW12348]++;
+	} else {
+		// message 2 counter
+		@[W:HW12347]++;
+	}
+	// transmit data
+	size232 = WriteToIO(0,&data2send[0], 27);
+	@[W:HW19211]++;
+	// reset tx buffer
+	global_ReadSize = ReadFromIO(0,&global_Response[0], 27 );
+	// total send counter
+	@[W:HW12349]++;
+	// ready to receive
+	@[W:HW12345] = 1;
+	// delay resend start
+	@[W:HW12355] = 1;
+} 
+//---------------------------- 
+
+//---------------------------- 
+//	delay resend message
+//---------------------------- 
+if(@[W:HW12355] > 0){
+	@[W:HW12355]++;
+}
+if(@[W:HW12355] > 10 ){
+	@[W:HW12355] = 0;
+}
+//---------------------------- 
+
+//---------------------------- 
+//	analyze received data
+//	hmi <-> ecu data length is always 27 bytes
+//---------------------------- 
+
+// when first byte is 0x65, which is sof	
+if(global_Response[0] == 0x65){
+	// when last byte is 0x0d, which is eof
+	if(global_Response[26] == 0x0d){
+		// receive complete ready to send
+		@[W:HW12345] = 0;
+		// timeout reset
+		@[W:HW12344] = 0;
+		// rcv counter
+		@[W:HW12346]++;
+		
+		if(global_Response[7] ==  0x31){
+			@[W:HW19212]++;
+		} else if(global_Response[7] ==  0x32){
+			@[W:HW19213]++;
+		}
+		
+		// message 1/2 converter
+		@[X:HW15243.0] = !@[X:HW15243.0];
+		//----------------
+		// connection check reset
+		@[W:HW19811] = 0;
+		
+		// get data only
+		for(global_rcv_cnt = 10; global_rcv_cnt < 26; global_rcv_cnt++){
+			// if alphabet data
+			if( global_Response[global_rcv_cnt] > 0x60){
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x57;
+			}
+			// if numeric data 
+			else {
+				global_buffer[global_buffercnt++] = global_Response[global_rcv_cnt] - 0x30;
+			}
+		}
+		// received address
+		global_addr = (global_buffer[0] << 4) + global_buffer[1];
+		
+		////------------------------------ a ------------------------------////
+		if(global_addr == 0x1a) {	// main page data
+			int temp1 = 0;
+			int temp2 = 0;
+			// 속도 => 0 ~ 200
+			@[W:HW11000] = (global_buffer[2] << 4) + global_buffer[3];
+			
+			// 상승력 => 0 ~ 5000
+			temp1 = (global_buffer[4] << 4) + global_buffer[5];
+			temp2 = (global_buffer[6] << 4) + global_buffer[7];
+		
+			int liftForce = (temp1 << 8) + temp2;
+			
+			if(@[X:HW09873.3] == 1) {
+				liftForce = liftForce*2.4;
+			}
+				
+			@[W:HW11008] = liftForce;
+			
+			// 고도 => -100 ~ 330
+			temp1 = (global_buffer[8] << 4) + global_buffer[9];
+			temp2 = (global_buffer[10] << 4) + global_buffer[11];
+			
+			// temp3 = 0 = '-100'
+			int temp3=(temp1 << 8) + temp2;
+			
+			int x = 0;
+			int div = 0;
+			x = temp3 - 100;
+			@[W:HW12011] = x;
+			// numeric display (소수점 제거 + 반올림 + 음수 방지)
+			if (x >= 0) {
+    				div = (x + 5)/10;   // -값 방지, 디폴트
+			} else {
+    				 div = (x - 5) / 10;   // 반올림 처리 (양수 구간)
+			}
+			@[W:HW12010] = div;
+			
+			int temp4 = 0;
+			// bar graph
+			if(temp3 <101){
+				// do not display negative value
+				@[W:HW13010] = 0;
+			} else {
+				// graph value should be equal to numeric value divide the value by 10
+				if(temp3 > 3399){
+					@[W:HW13010] = 400;
+				} else if(temp3 > 3100) {
+					temp4 = temp3-3100;
+					temp4 *= 3.33;
+					@[W:HW13010] = ((3000+temp4)/10);
+				} else {
+					@[W:HW13010] = ((temp3-100) / 10);
+				}
+			}
+			
+			//	han26_0626_01 start
+			// brake
+			temp1 = (global_buffer[12] << 4) + global_buffer[13];
+			
+			@[W:HW10116] = temp1;
+			
+			// brake off pressure from page4
+			int brakeOffPressure = @[W:HW41150];
+			
+			if(brakeOffPressure <= 0) {
+				brakeOffPressure = 0x11; // fallback
+			}
+			
+			// @[W:HW10115]
+			// 0 = first apply
+			// 1 = normal threshold mode
+			// 2 = hysteresis mode
+			
+			if(@[W:HW10115] == 0) {
+				// 최초 적용: 기준값으로 바로 판정
+				if(temp1 >= brakeOffPressure) {
+					@[X:HW00001.0] = 1; // brake off
+				} else {
+					@[X:HW00001.0] = 0; // brake on
+				}
+			
+				@[X:HW00001.1] = @[X:HW00001.0];
+				@[W:HW10115] = 1;
+			}
+			else if(@[W:HW10115] == 1) {
+				// 기본 판정
+				if(temp1 >= brakeOffPressure) {
+					@[X:HW00001.0] = 1; // brake off
+				} else {
+					@[X:HW00001.0] = 0; // brake on
+				}
+			
+				// 상태가 바뀌면 hysteresis mode 진입
+				if(@[X:HW00001.1] != @[X:HW00001.0]) {
+					@[X:HW00001.1] = @[X:HW00001.0];
+					@[W:HW10115] = 2;
+				}
+			}
+			else {
+				// hysteresis mode	
+				if(@[X:HW00001.0] == 0) {
+					// 현재 ON
+					// 17 -> 16으로 ON 된 후에는 17에서 유지, 18 도달 시 OFF
+					if(temp1 > brakeOffPressure) {
+						@[X:HW00001.0] = 1; // brake off
+					}
+				}
+				else {
+					// 현재 OFF
+					// 16 -> 17로 OFF 된 후에는 16에서 유지, 15 도달 시 ON
+					if(temp1 < brakeOffPressure) {
+						@[X:HW00001.0] = 0; // brake on
+					}
+				}
+			}
+			//	han26_0626_01 end
+			
+			// mode
+			temp1 = (global_buffer[14] << 4) + global_buffer[15]; 
+			
+			if(temp1 == 0x31) {
+				// 운용 모드
+				@[W:HW00011] = 1;
+				// free wheel pop up
+				@[X:HW15000.0] = 0;
+				// free wheel pop up trigger
+				@[X:HW15000.2] = 0;
+				
+				// maintenance pop up
+				@[X:HW15001.0] = 0;
+				// maintenance pop up trigger
+				@[X:HW15001.1] = 0;
+				// prevent entering test mode
+				@[X:HW15005.0] = 0;
+				// free wheel default
+				@[X:HW15000.1] = 0;
+				@[X:HW17000.0] = 0;
+			} else if(temp1 == 0x32) {
+				// 정비 모드
+				@[W:HW00011] = 2;
+				// free wheel pop up
+				@[X:HW15000.0] = 0;
+				// free wheel pop up trigger
+				@[X:HW15000.2] = 0;
+				
+				// maintenance pop up
+				if(@[X:HW15001.1] == 0){
+					@[X:HW15001.0] = 1;
+					// entering test mode
+					@[X:HW15005.0] = 1;
+				}
+				// free wheel default
+				@[X:HW15000.1] = 0;
+				@[X:HW17000.0] = 0;
+			} else if(temp1 == 0x33) {
+				// 교체 모드
+				@[W:HW00011] = 3;
+				// free wheel pop up
+				if(@[X:HW15000.2] == 0){
+					@[X:HW15000.0] = 1;
+				}
+				// free wheel not default
+				@[X:HW15000.1] = 1;
+				// maintenance pop up
+				@[X:HW15001.0] = 0;
+				// maintenance pop up trigger
+				@[X:HW15001.1] = 0;
+				// prevent entering test mode
+				@[X:HW15005.0] = 0;
+			}			
+		} 
+		////------------------------------ b ------------------------------////
+		else if(global_addr == 0x1b) {	// main page 2 
+			int temp1 = 0;
+			int temp2 = 0;
+			
+			// 솔 a
+			temp1 = (global_buffer[2] << 4) + global_buffer[3];
+			temp2 = (global_buffer[4] << 4) + global_buffer[5];
+			
+			@[W:HW10012] = (temp1 << 8) + temp2;
+			
+			// 솔 b
+			temp1 = (global_buffer[6] << 4) + global_buffer[7];
+			temp2 = (global_buffer[8] << 4) + global_buffer[9];
+			
+			@[W:HW10014] = (temp1 << 8) + temp2;
+			
+			// ecu version
+			
+			// major
+			temp1 = (global_buffer[10] << 4) + global_buffer[11];
+			// minor
+			temp2 = (global_buffer[12] << 4) + global_buffer[13];
+			
+			@[W:HW10016] = (temp1*1000) + temp2;
+		}
+		////---------------- page4 brake off pressure data ----------------////
+		else if(global_addr == 0x3a) {
+			// brake off pressure
+			@[W:HW41150] = (global_buffer[12] << 4) + global_buffer[13];
+		
+			// page4 기준값 수신 완료
+			@[W:HW12360] = 2;
+		
+			// 다음 송신부터 page1로 복귀
+			data2send[10] = 0x31;
+		}
+	}
+}
+
+//---------------------------- 
+//	toggle maintenance & change pop up
+//---------------------------- 
+if(@[X:HW15001.2] == 1){
+	@[X:HW15001.0] = 0;
+	@[X:HW15001.1] = 1;
+	@[X:HW15001.2] = 0;
+}
+if(@[X:HW15000.3] == 1){
+	@[X:HW15000.0] = 0;
+	@[X:HW15000.2] = 1;
+	@[X:HW15000.3] = 0;
+}
+
+ERROR:
+{
+
+}
